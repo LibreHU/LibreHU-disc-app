@@ -133,7 +133,8 @@ object DiscDrive {
         val r = Cdrom.eject(fd)
         if (r < 0) Log.i(TAG, "eject: $r")
         ejectedAt = System.currentTimeMillis()
-        loaded = false
+        // Opened again for the next disc, so that the kernel reads it anew (as discGone does)
+        closeDrive()
         toc = null
         set(DiscState.Reading)
     }

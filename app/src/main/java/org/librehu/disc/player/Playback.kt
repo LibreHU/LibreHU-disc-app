@@ -228,6 +228,14 @@ object Playback {
         if (s.index + 1 < s.queue.size) playIndex(s.index + 1) else stop()
     }
 
+    /** The CD left the drive: its tracks are forgotten (the queue of a data disc stays until its own disc goes). */
+    fun discGone() {
+        if (_state.value.queue.none { it.track != null }) return
+        release()
+        abandonFocus()
+        update { PlayerState() }
+    }
+
     /** Stops playback (everything queued is read from the disc) and opens the tray. */
     fun eject() {
         stop()
@@ -263,14 +271,19 @@ object Playback {
     private fun start(fromMs: Long) {
         release()
         val item = _state.value.current ?: return
-        if (!requestFocus()) return
+        if (!requestFocus()) {
+            Log.w(TAG, "audio focus refused")
+            return
+        }
         update { it.copy(playing = true, positionMs = fromMs, error = null) }
         startService()
         when {
             // The drive is being read by a rip
             item.track != null && Ripper.busy -> fail(app.getString(R.string.rip_busy))
+            item.track != null && DiscDrive.fd < 0 -> fail("drive closed")
             item.track != null -> {
                 val ahead = app.getSharedPreferences("disc", Context.MODE_PRIVATE).getInt("antiskip", ANTISKIP_DEFAULT)
+                Log.i(TAG, "play track ${item.track.number} from ${fromMs} ms (LBA ${item.track.startLba}..${item.track.endLba}, fd ${DiscDrive.fd}, anti-skip $ahead s)")
                 cd = CdThread(item.track, (fromMs * Cdrom.FRAMES_PER_SECOND / 1000).toInt(), ahead).also { it.start() }
             }
             item.file != null -> {

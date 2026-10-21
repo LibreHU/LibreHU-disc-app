@@ -48,9 +48,8 @@ class DiscService : MediaBrowserService() {
         scope.launch {
             DiscDrive.state.collect { s ->
                 notifyChildrenChanged(ROOT)
-                // Disc removed or changed under a playing CD track: stop.
-                val cur = Playback.state.value.current
-                if (cur?.track != null && s !is DiscState.AudioCd) Playback.stop()
+                // Disc removed or changed: its tracks leave the queue (the next CD then starts on its own)
+                if (s !is DiscState.AudioCd) Playback.discGone()
             }
         }
         scope.launch { CdInfoStore.info.collect { notifyChildrenChanged(ROOT) } }

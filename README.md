@@ -55,7 +55,9 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 - **Changement de disque** : le lecteur est rouvert à chaque disque (le noyau relit sa taille), et la table des
   pistes d'un CD audio est relue toutes les 1,5 s : un échange que le noyau ne signale pas est vu quand même. Un
   « CD audio » plus long que 99 min (piste d'un DVD que certains lecteurs ne marquent pas comme données) est traité
-  comme un disque de données. Une erreur de lecture sans disque arrête la lecture.
+  comme un disque de données. Une erreur de lecture sans disque arrête la lecture. Après Éjecter aussi, le lecteur
+  est rouvert pour le disque suivant, et les pistes d'un CD sorti quittent la file : le CD suivant démarre seul
+  (lecture auto).
 - **Session média** : touches du volant, [LibreHU EasySource](https://github.com/LibreHU/LibreHU-EasySource-app)
   (l'appli est une source média, la liste des pistes du CD est visible), notification avec précédent / lecture /
   suivant.
