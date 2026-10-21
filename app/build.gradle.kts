@@ -1,0 +1,97 @@
+import java.io.ByteArrayOutputStream
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+}
+
+// Version from git: versionName = `git describe` (rolling release tags excluded), versionCode = number of commits.
+fun git(vararg args: String): String? =
+    try {
+        val out = ByteArrayOutputStream()
+        val p = ProcessBuilder("git", *args).directory(rootDir).redirectErrorStream(true).start()
+        p.inputStream.copyTo(out)
+        if (p.waitFor() == 0) out.toString().trim() else null
+    } catch (_: Exception) {
+        null
+    }
+
+android {
+    namespace = "org.librehu.disc"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "org.librehu.disc"
+        // The UJC201 runs Android 9.
+        minSdk = 28
+        targetSdk = 35
+        versionCode = git("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+        versionName = git("describe", "--tags", "--always", "--dirty", "--exclude", "latest-*", "--exclude", "build-*") ?: "dev"
+
+        ndk {
+            // The AC8257 is arm64.
+            abiFilters += "arm64-v8a"
+        }
+    }
+
+    // CD-ROM ioctls (drive and disc status, table of contents, audio sectors, eject): not reachable from Java.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+    // One signing key for every LibreHU app, so that updates (LibreHU OTA) install over each other: LIBREHU_KEYSTORE*
+    // from the CI secrets when set, else keystore/librehu.jks of the repository.
+    signingConfigs {
+        create("librehu") {
+            storeFile = System.getenv("LIBREHU_KEYSTORE")?.let { file(it) } ?: rootProject.file("keystore/librehu.jks")
+            storePassword = System.getenv("LIBREHU_KEYSTORE_PASSWORD") ?: "librehu"
+            keyAlias = System.getenv("LIBREHU_KEY_ALIAS") ?: "librehu"
+            keyPassword = System.getenv("LIBREHU_KEY_PASSWORD") ?: "librehu"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") { signingConfig = signingConfigs.getByName("librehu") }
+        // What the CI publishes: not debuggable, so that ART compiles it fully (Compose is much slower in a debug
+        // build). No R8: reflection on hidden APIs and AIDL stay as they are.
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("librehu")
+            isMinifyEnabled = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    lint {
+        // Lint runs on its own; it must not block the release APK.
+        checkReleaseBuilds = false
+        // Head unit integration may use permissions granted to privileged installs only.
+        disable += setOf("ProtectedPermissions", "OldTargetApi")
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+dependencies {
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons)
+    implementation(libs.core.ktx)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.coroutines.android)
+}

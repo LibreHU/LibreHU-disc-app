@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LibreHU Disc</string>
+    <string name="drive">Drive</string>
+    <string name="no_drive">No CD / DVD drive</string>
+    <string name="no_drive_hint">Plug a USB CD / DVD drive into a USB port in host mode.</string>
+    <string name="no_access">Drive not accessible</string>
+    <string name="no_access_hint">Root is needed to open %1$s: allow LibreHU Disc in the root manager, then Reload.</string>
+    <string name="tray_open">Tray open</string>
+    <string name="tray_open_hint">Put a disc in and close the tray.</string>
+    <string name="close_tray">Close the tray</string>
+    <string name="no_disc">No disc</string>
+    <string name="no_disc_hint">Put an audio CD, a data CD / DVD or a DVD-Video in the drive.</string>
+    <string name="reading">Reading the disc…</string>
+    <string name="audio_cd">Audio CD</string>
+    <string name="cd_detail">%1$d tracks · %2$s</string>
+    <string name="data_tracks">%1$d data tracks</string>
+    <string name="data_cd">Data CD</string>
+    <string name="data_dvd">Data DVD</string>
+    <string name="dvd_video">DVD-Video</string>
+    <string name="dvd_hint">The DVD opens in VLC, with its menus (whole disc as an ISO image). CSS-protected commercial DVDs may not play.</string>
+    <string name="play_dvd">Play the DVD</string>
+    <string name="mount_failed">The disc could not be mounted (root needed, or file system not recognised).</string>
+    <string name="now_playing">Now playing</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="play_error">Playback error: %1$s</string>
+    <string name="track_n">Track %1$d</string>
+    <string name="eject">Eject</string>
+    <string name="reload">Reload</string>
+    <string name="autoplay">Play a CD when it is put in</string>
+    <string name="up">Up</string>
+    <string name="play_all">Play all</string>
+    <string name="no_app">No app to open this file</string>
+    <string name="channel_playback">Playback</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+</resources>

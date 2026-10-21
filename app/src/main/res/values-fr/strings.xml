@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LibreHU Disc</string>
+    <string name="drive">Lecteur</string>
+    <string name="no_drive">Pas de lecteur CD / DVD</string>
+    <string name="no_drive_hint">Branchez un lecteur CD / DVD USB sur un port USB en mode hôte.</string>
+    <string name="no_access">Lecteur inaccessible</string>
+    <string name="no_access_hint">Le root est nécessaire pour ouvrir %1$s : autorisez LibreHU Disc dans le gestionnaire root, puis Relire.</string>
+    <string name="tray_open">Tiroir ouvert</string>
+    <string name="tray_open_hint">Mettez un disque et fermez le tiroir.</string>
+    <string name="close_tray">Fermer le tiroir</string>
+    <string name="no_disc">Pas de disque</string>
+    <string name="no_disc_hint">Mettez un CD audio, un CD / DVD de données ou un DVD vidéo dans le lecteur.</string>
+    <string name="reading">Lecture du disque…</string>
+    <string name="audio_cd">CD audio</string>
+    <string name="cd_detail">%1$d pistes · %2$s</string>
+    <string name="data_tracks">%1$d pistes de données</string>
+    <string name="data_cd">CD de données</string>
+    <string name="data_dvd">DVD de données</string>
+    <string name="dvd_video">DVD vidéo</string>
+    <string name="dvd_hint">Le DVD s\'ouvre dans VLC, avec ses menus (le disque entier vu comme une image ISO). Les DVD du commerce protégés (CSS) peuvent ne pas se lire.</string>
+    <string name="play_dvd">Lire le DVD</string>
+    <string name="mount_failed">Le disque n\'a pas pu être monté (root nécessaire, ou système de fichiers non reconnu).</string>
+    <string name="now_playing">Lecture en cours</string>
+    <string name="nothing_playing">Rien en lecture</string>
+    <string name="play_error">Erreur de lecture : %1$s</string>
+    <string name="track_n">Piste %1$d</string>
+    <string name="eject">Éjecter</string>
+    <string name="reload">Relire</string>
+    <string name="autoplay">Lire un CD dès qu\'il est inséré</string>
+    <string name="up">Retour</string>
+    <string name="play_all">Tout lire</string>
+    <string name="no_app">Aucune appli pour ouvrir ce fichier</string>
+    <string name="channel_playback">Lecture</string>
+    <string name="play">Lecture</string>
+    <string name="pause">Pause</string>
+    <string name="next">Suivant</string>
+    <string name="previous">Précédent</string>
+</resources>
