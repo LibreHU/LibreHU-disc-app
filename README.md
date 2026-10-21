@@ -14,6 +14,10 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 | **CD / DVD de données** (MP3, FLAC, OGG, M4A, WAV…) | disque monté en lecture seule (UDF puis ISO 9660 / Joliet), navigation dans les dossiers, lecture des fichiers audio par l'appli (« Tout lire »), les autres fichiers (vidéos, images…) ouverts dans l'appli choisie |
 | **DVD vidéo** | ouvert dans **VLC** avec ses menus : l'appli lui donne le disque entier comme une image ISO (`content://org.librehu.disc.files/raw/disc.iso`) ; VLC pour Android lit les ISO de DVD, pas un dossier `VIDEO_TS` seul |
 
+- **Changement de disque** : le lecteur est rouvert à chaque disque (le noyau relit sa taille), et la table des
+  pistes d'un CD audio est relue toutes les 1,5 s : un échange que le noyau ne signale pas est vu quand même. Un
+  « CD audio » plus long que 99 min (piste d'un DVD que certains lecteurs ne marquent pas comme données) est traité
+  comme un disque de données. Une erreur de lecture sans disque arrête la lecture.
 - **Session média** : touches du volant, [LibreHU EasySource](https://github.com/LibreHU/LibreHU-EasySource-app)
   (l'appli est une source média, la liste des pistes du CD est visible), notification avec précédent / lecture /
   suivant.

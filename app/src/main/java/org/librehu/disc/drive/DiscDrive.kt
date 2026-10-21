@@ -63,6 +63,9 @@ object DiscDrive {
     private const val TAG = "LibreHU-Disc"
     private const val POLL_MS = 1500L
 
+    /** Longest audio CD (99 min, overburnt): a longer "audio" track is the data track of a DVD. */
+    private const val MAX_CD_FRAMES = 99 * 60 * Cdrom.FRAMES_PER_SECOND
+
     /** Mount point of data discs, in the global mount namespace. */
     const val MOUNT_POINT = "/mnt/librehu_disc"
 
@@ -85,6 +88,10 @@ object DiscDrive {
     private var loaded = false
     private var mounted = false
     private var chmodTried: String? = null
+
+    /** Table of contents of the audio CD shown, compared at each poll: a disc swap the kernel did not report. */
+    private var toc: IntArray? = null
+    private var lastStatus = Int.MIN_VALUE
 
     /** Starts watching; each [start] needs a [stop] (activity, playback service). */
     @Synchronized
@@ -165,12 +172,29 @@ object DiscDrive {
             fd = r
             Log.i(TAG, "drive $dev opened")
         }
-        when (Cdrom.driveStatus(fd)) {
+        val status = Cdrom.driveStatus(fd)
+        if (status != lastStatus) {
+            Log.i(TAG, "drive status $status")
+            lastStatus = status
+        }
+        when (status) {
             Cdrom.CDS_TRAY_OPEN -> discGone(DiscState.TrayOpen)
             Cdrom.CDS_NO_DISC -> discGone(DiscState.NoDisc)
             Cdrom.CDS_DRIVE_NOT_READY -> if (!loaded) set(DiscState.Reading)
             Cdrom.CDS_DISC_OK -> {
-                if (Cdrom.mediaChanged(fd) == 1) loaded = false
+                if (Cdrom.mediaChanged(fd) == 1 && loaded) {
+                    Log.i(TAG, "disc changed")
+                    reopen()
+                    return
+                }
+                if (loaded && _state.value is DiscState.AudioCd) {
+                    val now = Cdrom.readToc(fd)
+                    if (now != null && !now.contentEquals(toc)) {
+                        Log.i(TAG, "table of contents changed: another disc")
+                        reopen()
+                        return
+                    }
+                }
                 if (!loaded) load()
             }
             else -> if (!loaded) load()
@@ -178,25 +202,46 @@ object DiscDrive {
     }
 
     private fun discGone(s: DiscState) {
-        if (loaded || mounted) unmount()
+        // A disc was there: the drive is opened again for the next one, so that the kernel reads its size anew.
+        if (loaded || mounted || _state.value is DiscState.AudioCd || _state.value is DiscState.DataDisc) {
+            unmount()
+            closeDrive()
+        }
         loaded = false
+        toc = null
         set(s)
+    }
+
+    /** Another disc: closes the drive (playback stops) and reads the new one at the next poll. */
+    private fun reopen() {
+        unmount()
+        closeDrive()
+        toc = null
+        set(DiscState.Reading)
     }
 
     private fun load() {
         set(DiscState.Reading)
         val status = Cdrom.discStatus(fd)
-        val toc = Cdrom.readToc(fd)
-        val tracks = toc?.let { parseToc(it) }.orEmpty()
+        val raw = Cdrom.readToc(fd)
+        val tracks = raw?.let { parseToc(it) }.orEmpty()
         val audio = tracks.filter { !it.second }.map { it.first }
         val data = tracks.count { it.second }
-        Log.i(TAG, "disc status $status, ${audio.size} audio / $data data tracks")
+        val audioFrames = audio.sumOf { it.frames.toLong() }
+        val capacity = Cdrom.capacity(fd).coerceAtLeast(0)
+        val dataStatus =
+            status == Cdrom.CDS_DATA_1 || status == Cdrom.CDS_DATA_2 || status == Cdrom.CDS_XA_2_1 || status == Cdrom.CDS_XA_2_2
+        Log.i(TAG, "disc status $status, ${audio.size} audio ($audioFrames frames) / $data data tracks, $capacity bytes")
         loaded = true
-        if (audio.isNotEmpty() && (status == Cdrom.CDS_AUDIO || status == Cdrom.CDS_MIXED || data == 0)) {
+        toc = raw
+        // Audio CD: audio tracks, a disc status that is not data only, and no longer than a CD can be (some drives
+        // give a DVD a TOC whose single track is not marked as data).
+        if (audio.isNotEmpty() && !dataStatus && audioFrames <= MAX_CD_FRAMES &&
+            (status == Cdrom.CDS_AUDIO || status == Cdrom.CDS_MIXED || data == 0)
+        ) {
             set(DiscState.AudioCd(audio, data))
             return
         }
-        val capacity = Cdrom.capacity(fd).coerceAtLeast(0)
         val dir = mount()
         val videoTs = dir?.let { d -> File(d).list()?.any { it.equals("VIDEO_TS", ignoreCase = true) } } == true
         set(DiscState.DataDisc(dvd = capacity > 900L * 1024 * 1024, mountPoint = dir, dvdVideo = videoTs, capacity = capacity))

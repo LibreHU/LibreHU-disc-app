@@ -349,6 +349,12 @@ object Playback {
                     val frames = minOf(CHUNK_FRAMES, track.endLba - lba)
                     val r = Cdrom.readAudio(fd, lba, frames, buf)
                     if (r < 0) {
+                        // Disc removed or tray opened: stop, the drive watcher reads what is there now.
+                        if (Cdrom.driveStatus(fd) != Cdrom.CDS_DISC_OK) {
+                            Log.i(TAG, "read error $r at LBA $lba: no disc any more")
+                            DiscDrive.refresh()
+                            break
+                        }
                         // Scratch or bad sector: retry, then skip it with silence instead of stopping.
                         if (++errors < 3) continue
                         Log.w(TAG, "read error $r at LBA $lba")
