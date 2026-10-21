@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -52,7 +55,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +68,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.librehu.disc.R
 import org.librehu.disc.drive.DiscDrive
 import org.librehu.disc.drive.DiscState
+import org.librehu.disc.meta.CdInfo
+import org.librehu.disc.meta.CdInfoStore
 import org.librehu.disc.player.PlayerState
 import org.librehu.disc.player.Playback
 import java.io.File
@@ -79,7 +86,9 @@ fun DiscScreen(
     val context = LocalContext.current
     val disc by DiscDrive.state.collectAsStateWithLifecycle()
     val player by Playback.state.collectAsStateWithLifecycle()
+    val info by CdInfoStore.info.collectAsStateWithLifecycle()
     var autoplay by remember { mutableStateOf(prefs(context).getBoolean("autoplay", true)) }
+    var online by remember { mutableStateOf(CdInfoStore.enabled(context)) }
 
     // A CD put in while nothing plays starts at its first track (option).
     LaunchedEffect(disc) {
@@ -118,12 +127,16 @@ fun DiscScreen(
     ) {
         Column(Modifier.weight(0.42f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.app_name), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
-            StatusCard(disc)
+            StatusCard(disc, info)
             NowPlaying(player)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Pill(stringResource(R.string.eject), icon = Icons.Default.Eject) {
                     Playback.stop()
                     DiscDrive.eject()
+                }
+                if (disc == DiscState.TrayOpen || disc == DiscState.NoDisc) {
+                    Pill(stringResource(R.string.close_short)) { DiscDrive.closeTray() }
                 }
                 Pill(stringResource(R.string.reload), icon = Icons.Default.Refresh) { DiscDrive.refresh() }
                 Pill(stringResource(R.string.retro), icon = Icons.Default.Radio) {
@@ -135,10 +148,15 @@ fun DiscScreen(
                 autoplay = it
                 prefs(context).edit().putBoolean("autoplay", it).apply()
             }
+            SwitchRow(stringResource(R.string.musicbrainz), online) {
+                online = it
+                prefs(context).edit().putBoolean("musicbrainz", it).apply()
+                if (it) CdInfoStore.retry()
+            }
         }
         Box(Modifier.weight(0.58f).fillMaxHeight()) {
             when (val s = disc) {
-                is DiscState.AudioCd -> TrackList(s, player)
+                is DiscState.AudioCd -> TrackList(s, player, info)
                 is DiscState.DataDisc -> DataDisc(s, player, openFile, openDvd)
                 else -> Hint(disc)
             }
@@ -147,7 +165,11 @@ fun DiscScreen(
 }
 
 @Composable
-private fun StatusCard(disc: DiscState) {
+private fun StatusCard(
+    disc: DiscState,
+    info: CdInfo?,
+) {
+    val cdInfo = info?.takeIf { disc is DiscState.AudioCd && disc.discId == it.discId }
     val (title, detail) =
         when (disc) {
             DiscState.NoDrive -> stringResource(R.string.no_drive) to stringResource(R.string.no_drive_hint)
@@ -156,7 +178,9 @@ private fun StatusCard(disc: DiscState) {
             DiscState.NoDisc -> stringResource(R.string.no_disc) to ""
             DiscState.Reading -> stringResource(R.string.reading) to ""
             is DiscState.AudioCd ->
-                stringResource(R.string.audio_cd) to
+                (cdInfo?.album?.takeIf { it.isNotBlank() } ?: stringResource(R.string.audio_cd)) to
+                    listOfNotNull(cdInfo?.artist?.takeIf { it.isNotBlank() }, cdInfo?.year?.takeIf { it.isNotBlank() })
+                        .joinToString(" · ", postfix = if (cdInfo != null) "\n" else "") +
                     stringResource(R.string.cd_detail, disc.tracks.size, duration(disc.tracks.sumOf { it.durationMs })) +
                     if (disc.dataTracks > 0) " · " + stringResource(R.string.data_tracks, disc.dataTracks) else ""
             is DiscState.DataDisc ->
@@ -170,7 +194,17 @@ private fun StatusCard(disc: DiscState) {
         }
     Card(stringResource(R.string.drive)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Album, null, tint = CarColors.Accent, modifier = Modifier.size(44.dp))
+            val cover = cdInfo?.cover
+            if (cover != null) {
+                Image(
+                    cover.asImageBitmap(),
+                    null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                Icon(Icons.Default.Album, null, tint = CarColors.Accent, modifier = Modifier.size(44.dp))
+            }
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(title, color = CarColors.Text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
@@ -225,8 +259,9 @@ private fun NowPlaying(p: PlayerState) {
 private fun TrackList(
     cd: DiscState.AudioCd,
     p: PlayerState,
+    info: CdInfo?,
 ) {
-    val queue = remember(cd) { Playback.cdQueue(cd.tracks) }
+    val queue = remember(cd, info) { Playback.cdQueue(cd.tracks) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
         itemsIndexed(queue, key = { _, q -> q.id }) { i, q ->
             val current = p.current?.id == q.id
@@ -331,7 +366,7 @@ private fun Hint(
         Icon(Icons.Default.Album, null, tint = CarColors.TextDim, modifier = Modifier.size(96.dp))
         Spacer(Modifier.size(16.dp))
         Text(msg, color = CarColors.TextDim, fontSize = 18.sp)
-        if (disc is DiscState.TrayOpen) {
+        if (disc is DiscState.TrayOpen || disc is DiscState.NoDisc) {
             Spacer(Modifier.size(16.dp))
             Pill(stringResource(R.string.close_tray)) { DiscDrive.closeTray() }
         }

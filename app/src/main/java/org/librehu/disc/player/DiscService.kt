@@ -24,6 +24,7 @@ import org.librehu.disc.MainActivity
 import org.librehu.disc.R
 import org.librehu.disc.drive.DiscDrive
 import org.librehu.disc.drive.DiscState
+import org.librehu.disc.meta.CdInfoStore
 
 /**
  * Playback in the background: media session token, notification, and the browser tree that LibreHU EasySource and
@@ -52,6 +53,7 @@ class DiscService : MediaBrowserService() {
                 if (cur?.track != null && s !is DiscState.AudioCd) Playback.stop()
             }
         }
+        scope.launch { CdInfoStore.info.collect { notifyChildrenChanged(ROOT) } }
         scope.launch {
             while (isActive) {
                 Playback.tick()

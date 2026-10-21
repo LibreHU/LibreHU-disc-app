@@ -21,6 +21,9 @@ import org.librehu.disc.R
 import org.librehu.disc.drive.CdTrack
 import org.librehu.disc.drive.Cdrom
 import org.librehu.disc.drive.DiscDrive
+import org.librehu.disc.drive.DiscState
+import org.librehu.disc.meta.CdInfo
+import org.librehu.disc.meta.CdInfoStore
 import java.io.File
 
 /** One entry of the play queue: a CD track or a file of a data disc. */
@@ -102,15 +105,37 @@ object Playback {
                 @Suppress("DEPRECATION")
                 setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
             }
+        CdInfoStore.onChange = { renameCd() }
+        CdInfoStore.start(app)
         publish()
     }
 
     // --- Queue ---------------------------------------------------------------------------------------------------
 
-    fun cdQueue(tracks: List<CdTrack>): List<QueueItem> =
-        tracks.map {
-            QueueItem("cd:${it.number}", app.getString(R.string.track_n, it.number), app.getString(R.string.audio_cd), it.durationMs, track = it)
-        }
+    fun cdQueue(tracks: List<CdTrack>): List<QueueItem> = tracks.map { cdItem(it, info()) }
+
+    /** MusicBrainz info of the CD in the drive, if known. */
+    private fun info(): CdInfo? {
+        val id = (DiscDrive.state.value as? DiscState.AudioCd)?.discId ?: return null
+        return CdInfoStore.info.value?.takeIf { it.discId == id }
+    }
+
+    /** "Track N" and "Audio CD", or the title and "artist - album" from MusicBrainz. */
+    private fun cdItem(
+        t: CdTrack,
+        i: CdInfo?,
+    ): QueueItem {
+        val title = i?.titles?.get(t.number) ?: app.getString(R.string.track_n, t.number)
+        val sub = if (i == null) app.getString(R.string.audio_cd) else listOf(i.artistOf(t.number), i.album).filter { it.isNotBlank() }.joinToString(" - ")
+        return QueueItem("cd:${t.number}", title, sub, t.durationMs, track = t)
+    }
+
+    /** Titles arrived (or the disc changed): the CD tracks of the queue renamed, the session told. */
+    private fun renameCd() {
+        if (!::app.isInitialized) return
+        val i = info()
+        update { s -> s.copy(queue = s.queue.map { q -> q.track?.let { cdItem(it, i) } ?: q }) }
+    }
 
     fun fileQueue(files: List<File>): List<QueueItem> =
         files.map { QueueItem("file:${it.absolutePath}", it.nameWithoutExtension, it.parentFile?.name.orEmpty(), 0, file = it) }
@@ -453,14 +478,20 @@ object Playback {
     private fun publish() {
         val s = _state.value
         val item = s.current
+        val cdInfo = item?.track?.let { info() }
         session.setMetadata(
             MediaMetadata
                 .Builder()
                 .putString(MediaMetadata.METADATA_KEY_TITLE, item?.title ?: app.getString(R.string.app_name))
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, item?.subtitle.orEmpty())
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, item?.subtitle.orEmpty())
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, item?.track?.let { t -> cdInfo?.artistOf(t.number) } ?: item?.subtitle.orEmpty())
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, cdInfo?.album ?: item?.subtitle.orEmpty())
                 .putLong(MediaMetadata.METADATA_KEY_DURATION, item?.durationMs ?: 0)
-                .build(),
+                .apply {
+                    cdInfo?.cover?.let {
+                        putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it)
+                        putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, it)
+                    }
+                }.build(),
         )
         session.setQueue(
             s.queue.mapIndexed { i, q ->

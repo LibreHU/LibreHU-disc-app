@@ -51,6 +51,7 @@ import kotlinx.coroutines.delay
 import org.librehu.disc.R
 import org.librehu.disc.drive.DiscDrive
 import org.librehu.disc.drive.DiscState
+import org.librehu.disc.meta.CdInfoStore
 import org.librehu.disc.player.PlayerState
 import org.librehu.disc.player.Playback
 import org.librehu.disc.player.Spectrum
@@ -124,9 +125,14 @@ fun RetroScreen(
             Key("◄◄", "TRACK", lit, Modifier.weight(1f)) { Playback.previous() }
             Key("►‖", if (dvd) "DVD" else "PLAY", lit, Modifier.weight(1.3f)) { if (dvd) openDvd() else Playback.toggle() }
             Key("►►", "TRACK", lit, Modifier.weight(1f)) { Playback.next() }
-            Key("▲", "EJECT", lit, Modifier.weight(1f)) {
-                Playback.stop()
-                DiscDrive.eject()
+            val closable = disc == DiscState.TrayOpen || disc == DiscState.NoDisc
+            Key("▲", if (closable) "CLOSE" else "EJECT", lit, Modifier.weight(1f)) {
+                if (closable) {
+                    DiscDrive.closeTray()
+                } else {
+                    Playback.stop()
+                    DiscDrive.eject()
+                }
             }
             Key("☰", "LIST", lit, Modifier.weight(1f), active = list) { list = !list }
             Key("◐", "COLOR", lit, Modifier.weight(1f), onClick = onColor)
@@ -379,6 +385,9 @@ private fun ListPanel(
     openDvd: () -> Unit,
     modifier: Modifier,
 ) {
+    val cdInfo by CdInfoStore.info.collectAsStateWithLifecycle()
+    val info = cdInfo?.takeIf { disc is DiscState.AudioCd && disc.discId == it.discId }
+    val cdQueue = remember(disc, info) { (disc as? DiscState.AudioCd)?.let { Playback.cdQueue(it.tracks) }.orEmpty() }
     val root = (disc as? DiscState.DataDisc)?.mountPoint
     var dir by remember(root) { mutableStateOf(root?.let { File(it) }) }
     val entries =
@@ -395,10 +404,11 @@ private fun ListPanel(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             when (disc) {
                 is DiscState.AudioCd -> {
-                    val queue = Playback.cdQueue(disc.tracks)
+                    val queue = cdQueue
                     items(queue.size) { i ->
                         val q = queue[i]
-                        Line("%02d  %s".format(i + 1, duration(q.durationMs)), p.current?.id == q.id, lit) {
+                        val name = if (info != null) "  " + q.title.uppercase() else ""
+                        Line("%02d  %s%s".format(i + 1, duration(q.durationMs), name), p.current?.id == q.id, lit) {
                             if (p.current?.id == q.id) Playback.toggle() else Playback.playQueue(queue, i)
                         }
                     }

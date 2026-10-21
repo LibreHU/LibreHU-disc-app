@@ -37,4 +37,6 @@
     <string name="pause">Pause</string>
     <string name="next">Suivant</string>
     <string name="previous">Précédent</string>
+    <string name="close_short">Fermer</string>
+    <string name="musicbrainz">Infos du disque en ligne (MusicBrainz)</string>
 </resources>

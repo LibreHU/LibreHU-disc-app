@@ -14,6 +14,16 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 | **CD / DVD de données** (MP3, FLAC, OGG, M4A, WAV…) | disque monté en lecture seule (UDF puis ISO 9660 / Joliet), navigation dans les dossiers, lecture des fichiers audio par l'appli (« Tout lire »), les autres fichiers (vidéos, images…) ouverts dans l'appli choisie |
 | **DVD vidéo** | ouvert dans **VLC** avec ses menus : l'appli lui donne le disque entier comme une image ISO (`content://org.librehu.disc.files/raw/disc.iso`) ; VLC pour Android lit les ISO de DVD, pas un dossier `VIDEO_TS` seul |
 
+- **Album, artiste, titres et pochette des CD audio** depuis [MusicBrainz](https://musicbrainz.org/doc/MusicBrainz_API)
+  et le [Cover Art Archive](https://musicbrainz.org/doc/Cover_Art_Archive/API) : l'appli calcule l'identifiant du disque
+  à partir de sa table des pistes ([calcul MusicBrainz](https://musicbrainz.org/doc/Disc_ID_Calculation)) et n'envoie que
+  lui (une requête par nouveau disque, sans clé). Titres dans la liste, l'afficheur rétro, la notification et la
+  session média (EasySource, widget du lanceur), pochette sur la fiche du disque et dans la session. Réponses et
+  pochettes gardées dans l'appli : un disque déjà vu s'affiche hors ligne. Disque inconnu de MusicBrainz : redemandé
+  au bout de 3 jours. Option « Infos du disque en ligne (MusicBrainz) ». Les DVD n'ont pas d'équivalent libre et
+  sans clé.
+- **Tiroir** : Éjecter, et Fermer quand le tiroir est ouvert ou qu'il n'y a pas de disque (lecteurs à tiroir motorisé ;
+  la touche ▲ de l'afficheur rétro devient CLOSE).
 - **Changement de disque** : le lecteur est rouvert à chaque disque (le noyau relit sa taille), et la table des
   pistes d'un CD audio est relue toutes les 1,5 s : un échange que le noyau ne signale pas est vu quand même. Un
   « CD audio » plus long que 99 min (piste d'un DVD que certains lecteurs ne marquent pas comme données) est traité

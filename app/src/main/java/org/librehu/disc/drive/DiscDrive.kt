@@ -43,6 +43,8 @@ sealed interface DiscState {
         val tracks: List<CdTrack>,
         /** Data tracks of an enhanced CD, not playable. */
         val dataTracks: Int,
+        /** MusicBrainz disc ID ([DiscId]), for the album, artist, titles and cover. */
+        val discId: String? = null,
     ) : DiscState
 
     data class DataDisc(
@@ -124,9 +126,23 @@ object DiscDrive {
         }
     }
 
+    /** Closes the tray (drives with a motorised tray), then reads the disc. */
     fun closeTray() {
-        scope.launch { if (fd >= 0) Cdrom.closeTray(fd) }
+        scope.launch {
+            val dev = device ?: findDevice() ?: return@launch
+            // The drive is closed between two discs (discGone): opened just for the command then.
+            val f = if (fd >= 0) fd else Cdrom.nativeOpen(dev)
+            if (f < 0) return@launch
+            val r = Cdrom.closeTray(f)
+            if (r < 0) Log.i(TAG, "close tray: $r")
+            if (f != fd) Cdrom.nativeClose(f)
+            loaded = false
+            poll()
+        }
     }
+
+    /** The tray is open, or the drive says no disc (some report an open tray so): the eject key closes it. */
+    val closable: Boolean get() = _state.value == DiscState.TrayOpen || _state.value == DiscState.NoDisc
 
     /** Reads the disc again (after an error, or a refused root request now allowed). */
     fun refresh() {
@@ -239,7 +255,7 @@ object DiscDrive {
         if (audio.isNotEmpty() && !dataStatus && audioFrames <= MAX_CD_FRAMES &&
             (status == Cdrom.CDS_AUDIO || status == Cdrom.CDS_MIXED || data == 0)
         ) {
-            set(DiscState.AudioCd(audio, data))
+            set(DiscState.AudioCd(audio, data, raw?.let { DiscId.of(it) }))
             return
         }
         val dir = mount()
