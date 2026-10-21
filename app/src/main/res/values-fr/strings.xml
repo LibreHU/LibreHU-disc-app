@@ -28,6 +28,7 @@
     <string name="eject">Éjecter</string>
     <string name="reload">Relire</string>
     <string name="autoplay">Lire un CD dès qu\'il est inséré</string>
+    <string name="retro">Rétro</string>
     <string name="up">Retour</string>
     <string name="play_all">Tout lire</string>
     <string name="no_app">Aucune appli pour ouvrir ce fichier</string>

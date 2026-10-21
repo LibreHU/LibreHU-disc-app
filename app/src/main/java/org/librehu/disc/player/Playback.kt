@@ -51,8 +51,8 @@ data class PlayerState(
 object Playback {
     private const val TAG = "LibreHU-Disc"
 
-    /** Sectors per read: about 1/3 s, small enough for a quick seek, big enough for USB drives. */
-    private const val CHUNK_FRAMES = 24
+    /** Sectors per read: 1/6 s, small enough for a quick seek and a lively analyser, big enough for USB drives. */
+    private const val CHUNK_FRAMES = 12
 
     /** Back to the start of the track instead of the previous one after this. */
     private const val RESTART_MS = 3000L
@@ -324,7 +324,10 @@ object Playback {
             try {
                 while (running) {
                     if (paused) {
-                        if (out.playState == AudioTrack.PLAYSTATE_PLAYING) out.pause()
+                        if (out.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                            out.pause()
+                            Spectrum.rest()
+                        }
                         SystemClock.sleep(50)
                         continue
                     }
@@ -353,12 +356,14 @@ object Playback {
                         out.write(buf, 0, frames * Cdrom.FRAME_BYTES)
                     } else {
                         out.write(buf, 0, r)
+                        Spectrum.feed(buf, r, out.bufferSizeInFrames * 1000L / 44100)
                     }
                     errors = 0
                     lba += frames
                 }
             } catch (_: InterruptedException) {
             } finally {
+                Spectrum.rest()
                 runCatching {
                     out.pause()
                     out.flush()

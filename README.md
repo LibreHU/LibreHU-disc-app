@@ -19,6 +19,14 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
   suivant.
 - **Focus audio** : pause quand une autre source joue (appel, navigation, autre appli), reprise après une
   interruption courte.
+- **Deux styles** : *Moderne* (thème LibreHU, suit le lanceur) ou **Rétro**, façade d'autoradio CD des années
+  1990-2000 : afficheur à segments (police [DSEG](https://github.com/keshikan/DSEG), segments éteints visibles par
+  transparence et halo lumineux), témoins LOAD / CD / DVD / DATA / MP3 / ▶ / ‖, piste et temps en 7 segments, texte
+  défilant en 14 segments, **analyseur de spectre 16 bandes** calculé sur le son du CD (FFT, décalé de la latence de
+  sortie pour suivre ce qu'on entend), touches en relief (◄◄ ►‖ ►► ▲ LIST COLOR MODE), afficheur ambre, bleu glacier,
+  vert ou rouge (COLOR). Bouton *Rétro* de l'écran moderne, touche MODE pour revenir.
+- **Root demandé au premier démarrage de LibreHU Launcher** avec les autres applis LibreHU
+  (`org.librehu.action.REQUEST_ROOT`, comme LibreHU FM).
 
 ## Ce qu'il faut
 
@@ -54,4 +62,4 @@ Compilation : `./gradlew :app:assembleRelease` (JDK 17+, SDK Android, NDK instal
 (`.github/workflows/build.yml`) publie l'APK en release `latest-<branche>` pour
 [LibreHU OTA](https://github.com/LibreHU/LibreHU-OTA-app), comme les autres applis LibreHU.
 
-Licence : GPL-2.0 (voir `LICENSE`).
+Licence : GPL-2.0 (voir `LICENSE`). Police DSEG © keshikan, SIL Open Font License 1.1 (`third_party/DSEG-LICENSE.txt`).

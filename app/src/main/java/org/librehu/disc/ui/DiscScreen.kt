@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -66,9 +67,9 @@ import org.librehu.disc.player.PlayerState
 import org.librehu.disc.player.Playback
 import java.io.File
 
-private val AUDIO = setOf("mp3", "flac", "ogg", "oga", "opus", "m4a", "aac", "wav", "mka")
+internal val AUDIO = setOf("mp3", "flac", "ogg", "oga", "opus", "m4a", "aac", "wav", "mka")
 
-private fun prefs(context: Context) = context.getSharedPreferences("disc", Context.MODE_PRIVATE)
+internal fun prefs(context: Context) = context.getSharedPreferences("disc", Context.MODE_PRIVATE)
 
 @Composable
 fun DiscScreen(
@@ -88,6 +89,29 @@ fun DiscScreen(
         }
     }
 
+    var retro by remember { mutableStateOf(prefs(context).getBoolean("retro", false)) }
+    var color by remember {
+        mutableStateOf(runCatching { RetroColor.valueOf(prefs(context).getString("retro_color", null)!!) }.getOrDefault(RetroColor.AMBER))
+    }
+    if (retro) {
+        RetroScreen(
+            disc,
+            player,
+            color,
+            onColor = {
+                color = RetroColor.entries[(color.ordinal + 1) % RetroColor.entries.size]
+                prefs(context).edit().putString("retro_color", color.name).apply()
+            },
+            onModern = {
+                retro = false
+                prefs(context).edit().putBoolean("retro", false).apply()
+            },
+            openFile = openFile,
+            openDvd = openDvd,
+        )
+        return
+    }
+
     Row(
         Modifier.fillMaxSize().background(CarColors.Background).padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -102,6 +126,10 @@ fun DiscScreen(
                     DiscDrive.eject()
                 }
                 Pill(stringResource(R.string.reload), icon = Icons.Default.Refresh) { DiscDrive.refresh() }
+                Pill(stringResource(R.string.retro), icon = Icons.Default.Radio) {
+                    retro = true
+                    prefs(context).edit().putBoolean("retro", true).apply()
+                }
             }
             SwitchRow(stringResource(R.string.autoplay), autoplay) {
                 autoplay = it
@@ -413,7 +441,7 @@ private fun Pill(
     }
 }
 
-private fun duration(ms: Long): String {
+internal fun duration(ms: Long): String {
     val s = ms / 1000
     return "%d:%02d".format(s / 60, s % 60)
 }

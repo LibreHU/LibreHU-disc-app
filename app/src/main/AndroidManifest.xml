@@ -60,6 +60,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- LibreHU Launcher's first start: root asked for every LibreHU app at once (RootRequestReceiver). -->
+        <receiver
+            android:name=".RootRequestReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.librehu.action.REQUEST_ROOT" />
+            </intent-filter>
+        </receiver>
+
         <!-- Files of the mounted disc and the whole disc as an ISO image, read-only, by URI grant. -->
         <provider
             android:name=".DiscFileProvider"

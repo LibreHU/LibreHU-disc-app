@@ -28,6 +28,7 @@
     <string name="eject">Eject</string>
     <string name="reload">Reload</string>
     <string name="autoplay">Play a CD when it is put in</string>
+    <string name="retro">Retro</string>
     <string name="up">Up</string>
     <string name="play_all">Play all</string>
     <string name="no_app">No app to open this file</string>
