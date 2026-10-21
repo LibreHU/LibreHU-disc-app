@@ -172,6 +172,20 @@ JNIEXPORT jint JNICALL JNI_FN(eject)(JNIEnv *env, jclass cls, jint fd)
 	return ioctl(fd, CDROMEJECT, 0) < 0 ? -errno : 0;
 }
 
+/*
+ * Turns off the kernel's auto-close (CDO_AUTO_CLOSE, sysctl dev.cdrom.autoclose, on by default): with it, any open of
+ * the drive without O_NONBLOCK while the tray is open (mount, another app) closes the tray. The option belongs to the
+ * drive, so it holds for every opener until the drive is plugged again. Returns the drive's options, or -errno.
+ */
+JNIEXPORT jint JNICALL JNI_FN(noAutoClose)(JNIEnv *env, jclass cls, jint fd)
+{
+	(void)env;
+	(void)cls;
+	int r = ioctl(fd, CDROM_CLEAR_OPTIONS, CDO_AUTO_CLOSE);
+
+	return r < 0 ? -errno : r;
+}
+
 JNIEXPORT jint JNICALL JNI_FN(closeTray)(JNIEnv *env, jclass cls, jint fd)
 {
 	(void)env;

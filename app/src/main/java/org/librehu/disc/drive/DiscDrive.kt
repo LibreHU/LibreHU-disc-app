@@ -65,6 +65,9 @@ object DiscDrive {
     private const val TAG = "LibreHU-Disc"
     private const val POLL_MS = 1500L
 
+    /** After an eject, the drive may still say "disc OK" for a moment: not read again meanwhile. */
+    private const val EJECT_GRACE_MS = 6000L
+
     /** Longest audio CD (99 min, overburnt): a longer "audio" track is the data track of a DVD. */
     private const val MAX_CD_FRAMES = 99 * 60 * Cdrom.FRAMES_PER_SECOND
 
@@ -94,6 +97,7 @@ object DiscDrive {
     /** Table of contents of the audio CD shown, compared at each poll: a disc swap the kernel did not report. */
     private var toc: IntArray? = null
     private var lastStatus = Int.MIN_VALUE
+    private var ejectedAt = 0L
 
     /** Starts watching; each [start] needs a [stop] (activity, playback service). */
     @Synchronized
@@ -117,13 +121,21 @@ object DiscDrive {
         job = null
     }
 
-    /** Opens the tray (unmounts first). */
+    /** Opens the tray (unmounts first). Callers stop the CD playback first. */
     fun eject() {
-        scope.launch {
-            unmount()
-            if (fd >= 0) Cdrom.eject(fd)
-            loaded = false
-        }
+        scope.launch { doEject() }
+    }
+
+    @Synchronized
+    private fun doEject() {
+        unmount()
+        if (fd < 0) return
+        val r = Cdrom.eject(fd)
+        if (r < 0) Log.i(TAG, "eject: $r")
+        ejectedAt = System.currentTimeMillis()
+        loaded = false
+        toc = null
+        set(DiscState.Reading)
     }
 
     /** Closes the tray (drives with a motorised tray), then reads the disc. */
@@ -133,6 +145,8 @@ object DiscDrive {
             // The drive is closed between two discs (discGone): opened just for the command then.
             val f = if (fd >= 0) fd else Cdrom.nativeOpen(dev)
             if (f < 0) return@launch
+            Cdrom.noAutoClose(f)
+            ejectedAt = 0
             val r = Cdrom.closeTray(f)
             if (r < 0) Log.i(TAG, "close tray: $r")
             if (f != fd) Cdrom.nativeClose(f)
@@ -186,6 +200,7 @@ object DiscDrive {
                 return
             }
             fd = r
+            Cdrom.noAutoClose(fd)
             Log.i(TAG, "drive $dev opened")
         }
         val status = Cdrom.driveStatus(fd)
@@ -193,11 +208,16 @@ object DiscDrive {
             Log.i(TAG, "drive status $status")
             lastStatus = status
         }
+        val justEjected = System.currentTimeMillis() - ejectedAt < EJECT_GRACE_MS
         when (status) {
-            Cdrom.CDS_TRAY_OPEN -> discGone(DiscState.TrayOpen)
+            Cdrom.CDS_TRAY_OPEN -> {
+                ejectedAt = 0
+                discGone(DiscState.TrayOpen)
+            }
             Cdrom.CDS_NO_DISC -> discGone(DiscState.NoDisc)
             Cdrom.CDS_DRIVE_NOT_READY -> if (!loaded) set(DiscState.Reading)
-            Cdrom.CDS_DISC_OK -> {
+            // The tray is opening: the disc is not read again (that mounted it, and the mount closed the tray).
+            Cdrom.CDS_DISC_OK -> if (!justEjected) {
                 if (Cdrom.mediaChanged(fd) == 1 && loaded) {
                     Log.i(TAG, "disc changed")
                     reopen()
@@ -213,7 +233,8 @@ object DiscDrive {
                 }
                 if (!loaded) load()
             }
-            else -> if (!loaded) load()
+            // Drives that cannot tell their state; not on an error (-errno), which an opening tray gives too.
+            Cdrom.CDS_NO_INFO -> if (!loaded && !justEjected) load()
         }
     }
 
@@ -248,6 +269,11 @@ object DiscDrive {
         val dataStatus =
             status == Cdrom.CDS_DATA_1 || status == Cdrom.CDS_DATA_2 || status == Cdrom.CDS_XA_2_1 || status == Cdrom.CDS_XA_2_2
         Log.i(TAG, "disc status $status, ${audio.size} audio ($audioFrames frames) / $data data tracks, $capacity bytes")
+        // No table of contents and the drive says there is no disc: gone meanwhile (tray opening), nothing to mount.
+        if (tracks.isEmpty() && (status == Cdrom.CDS_NO_DISC || status == Cdrom.CDS_TRAY_OPEN || status < 0)) {
+            set(DiscState.Reading)
+            return
+        }
         loaded = true
         toc = raw
         // Audio CD: audio tracks, a disc status that is not data only, and no longer than a CD can be (some drives

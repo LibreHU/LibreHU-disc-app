@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.foundation.Image
@@ -72,6 +74,7 @@ import org.librehu.disc.meta.CdInfo
 import org.librehu.disc.meta.CdInfoStore
 import org.librehu.disc.player.PlayerState
 import org.librehu.disc.player.Playback
+import org.librehu.disc.rip.Ripper
 import java.io.File
 
 internal val AUDIO = setOf("mp3", "flac", "ogg", "oga", "opus", "m4a", "aac", "wav", "mka")
@@ -87,13 +90,13 @@ fun DiscScreen(
     val disc by DiscDrive.state.collectAsStateWithLifecycle()
     val player by Playback.state.collectAsStateWithLifecycle()
     val info by CdInfoStore.info.collectAsStateWithLifecycle()
-    var autoplay by remember { mutableStateOf(prefs(context).getBoolean("autoplay", true)) }
-    var online by remember { mutableStateOf(CdInfoStore.enabled(context)) }
+    val rip by Ripper.state.collectAsStateWithLifecycle()
+    var page by remember { mutableStateOf("main") }
 
-    // A CD put in while nothing plays starts at its first track (option).
+    // A CD put in while nothing plays starts at its first track (option); not while it is being ripped.
     LaunchedEffect(disc) {
         val s = disc
-        if (s is DiscState.AudioCd && autoplay && player.current == null) {
+        if (s is DiscState.AudioCd && prefs(context).getBoolean("autoplay", true) && player.current == null && !Ripper.busy) {
             Playback.playQueue(Playback.cdQueue(s.tracks), 0)
         }
     }
@@ -101,6 +104,15 @@ fun DiscScreen(
     var retro by remember { mutableStateOf(prefs(context).getBoolean("retro", false)) }
     var color by remember {
         mutableStateOf(runCatching { RetroColor.valueOf(prefs(context).getString("retro_color", null)!!) }.getOrDefault(RetroColor.AMBER))
+    }
+    val audioCd = disc as? DiscState.AudioCd
+    if (page == "settings") {
+        SettingsScreen(onBack = { page = "main" })
+        return
+    }
+    if (page == "rip" && audioCd != null && !rip.running) {
+        RipScreen(audioCd, info, onBack = { page = "main" }, onSettings = { page = "settings" })
+        return
     }
     if (retro) {
         RetroScreen(
@@ -128,30 +140,24 @@ fun DiscScreen(
         Column(Modifier.weight(0.42f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.app_name), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
             StatusCard(disc, info)
-            NowPlaying(player)
+            if (rip.running || rip.finished) RipCard(rip) else NowPlaying(player)
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Pill(stringResource(R.string.eject), icon = Icons.Default.Eject) {
-                    Playback.stop()
-                    DiscDrive.eject()
+                    Playback.eject()
                 }
                 if (disc == DiscState.TrayOpen || disc == DiscState.NoDisc) {
                     Pill(stringResource(R.string.close_short)) { DiscDrive.closeTray() }
                 }
                 Pill(stringResource(R.string.reload), icon = Icons.Default.Refresh) { DiscDrive.refresh() }
+                if (audioCd != null && !rip.running) {
+                    Pill(stringResource(R.string.rip), icon = Icons.Default.Download) { page = "rip" }
+                }
+                Pill(stringResource(R.string.settings), icon = Icons.Default.Settings) { page = "settings" }
                 Pill(stringResource(R.string.retro), icon = Icons.Default.Radio) {
                     retro = true
                     prefs(context).edit().putBoolean("retro", true).apply()
                 }
-            }
-            SwitchRow(stringResource(R.string.autoplay), autoplay) {
-                autoplay = it
-                prefs(context).edit().putBoolean("autoplay", it).apply()
-            }
-            SwitchRow(stringResource(R.string.musicbrainz), online) {
-                online = it
-                prefs(context).edit().putBoolean("musicbrainz", it).apply()
-                if (it) CdInfoStore.retry()
             }
         }
         Box(Modifier.weight(0.58f).fillMaxHeight()) {
@@ -374,7 +380,7 @@ private fun Hint(
 }
 
 @Composable
-private fun ListRow(
+internal fun ListRow(
     icon: ImageVector,
     title: String,
     trailing: String,
@@ -418,7 +424,7 @@ private fun RoundButton(
 }
 
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
@@ -434,7 +440,7 @@ private fun SwitchRow(
 }
 
 @Composable
-private fun Card(
+internal fun Card(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -452,7 +458,7 @@ private fun Card(
 }
 
 @Composable
-private fun Pill(
+internal fun Pill(
     label: String,
     selected: Boolean = false,
     icon: ImageVector? = null,
@@ -481,7 +487,7 @@ internal fun duration(ms: Long): String {
     return "%d:%02d".format(s / 60, s % 60)
 }
 
-private fun size(bytes: Long): String =
+internal fun size(bytes: Long): String =
     when {
         bytes >= 1L shl 30 -> "%.1f Go".format(bytes / 1073741824.0)
         bytes >= 1L shl 20 -> "%.1f Mo".format(bytes / 1048576.0)

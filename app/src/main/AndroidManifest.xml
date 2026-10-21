@@ -4,9 +4,16 @@
     <!-- Playback in the background with its notification. -->
     <!-- MusicBrainz / Cover Art Archive: album, titles and cover of audio CDs (option) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Network back: the discs seen offline are looked up then. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- CD rip: Music/LibreHU Disc on Android 9; a folder picked with the system's picker needs nothing. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <queries>
         <!-- VLC opens a DVD (whole disc as an ISO image) with its menus; any viewer for the other files. -->
@@ -51,6 +58,12 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- CD rip in the background, with its progress. -->
+        <service
+            android:name=".rip.RipService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name=".player.ControlReceiver"

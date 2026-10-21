@@ -130,8 +130,7 @@ fun RetroScreen(
                 if (closable) {
                     DiscDrive.closeTray()
                 } else {
-                    Playback.stop()
-                    DiscDrive.eject()
+                    Playback.eject()
                 }
             }
             Key("☰", "LIST", lit, Modifier.weight(1f), active = list) { list = !list }

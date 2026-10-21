@@ -20,10 +20,38 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
   lui (une requête par nouveau disque, sans clé). Titres dans la liste, l'afficheur rétro, la notification et la
   session média (EasySource, widget du lanceur), pochette sur la fiche du disque et dans la session. Réponses et
   pochettes gardées dans l'appli : un disque déjà vu s'affiche hors ligne. Disque inconnu de MusicBrainz : redemandé
-  au bout de 3 jours. Option « Infos du disque en ligne (MusicBrainz) ». Les DVD n'ont pas d'équivalent libre et
-  sans clé.
+  au bout de 3 jours. Les DVD n'ont pas d'équivalent libre et sans clé. Réglages (voir plus bas) : recherche en ligne,
+  garder les infos hors ligne, mode hors ligne.
+- **Anti-saut** (Réglages → Lecture, 10 s par défaut ; Non / 5 / 10 / 20 / 40 s) : un fil lit le CD en avance dans la
+  mémoire, un autre envoie le son à Android. Quand un choc de la route fait perdre la piste au lecteur, les lectures
+  qui échouent sont refaites (jusqu'à 12 fois, avec une courte pause) pendant que la mémoire continue de jouer : rien
+  ne s'entend tant que la relecture réussit avant qu'elle soit vide. Sans l'option : 1/3 s d'avance et 3 essais,
+  comme avant. Un secteur toujours illisible est joué en silence plutôt que d'arrêter la lecture.
+- **Extraction (rip) des CD audio** (bouton *Extraire* d'un CD audio) : choix des pistes, **FLAC** (encodeur intégré,
+  sans perte, vérifié par décodage avec FFmpeg : audio identique à l'octet près, MD5 de l'en-tête correct) ou **WAV**.
+  Options (Réglages → Extraction) : **lecture vérifiée** (chaque bloc de 20 s lu deux fois et comparé, relu jusqu'à
+  6 fois tant que deux lectures diffèrent), relectures d'un secteur illisible (3 / 10 / 30, puis silence, compté
+  comme « secteur douteux »), nom des fichiers (`01 - Titre`, `01 - Artiste - Titre`, `Artiste - Titre`), dossiers
+  `Artiste/Album` ou `Artiste - Album`, **tags** (titre, artiste, album, artiste de l'album, année, numéro de piste,
+  identifiant MusicBrainz du disque) et **pochette** (intégrée au FLAC et `folder.jpg`), destination
+  `Musique/LibreHU Disc` (mémoire interne, permission de stockage demandée à la première extraction) ou **un dossier
+  choisi** avec le sélecteur d'Android (clé USB, carte SD). Progression dans l'appli et dans une notification
+  (Annuler) ; l'extraction continue appli fermée. La lecture s'arrête pendant l'extraction (les deux liraient le
+  lecteur). Les fichiers sont signalés aux applis de musique à la fin (`MediaScannerConnection`).
+- **Réglages** : lecture auto à l'insertion, anti-saut ; infos des disques : *Infos du disque en ligne (MusicBrainz)*,
+  *Garder les infos hors ligne* (coupé : oubliées quand le disque sort du lecteur), *Mode hors ligne* (aucune
+  connexion ; les disques inconnus sont notés « en attente » et recherchés quand le mode est coupé) ; un disque vu sans
+  réseau est aussi mis en attente et recherché dès que le réseau revient. Nombre de disques enregistrés, place
+  occupée, disques en attente, boutons *Rechercher les disques en attente* et *Effacer les infos enregistrées* ;
+  options d'extraction.
 - **Tiroir** : Éjecter, et Fermer quand le tiroir est ouvert ou qu'il n'y a pas de disque (lecteurs à tiroir motorisé ;
-  la touche ▲ de l'afficheur rétro devient CLOSE).
+  la touche ▲ de l'afficheur rétro devient CLOSE). Bouton ⏏ aussi dans la carte média de
+  [LibreHU Launcher](https://github.com/LibreHU/LibreHU-Launcher-App) (action `org.librehu.disc.action.EJECT` de la
+  session média). Le tiroir ne se referme plus tout seul : le noyau ferme le tiroir à toute ouverture du lecteur sans
+  `O_NONBLOCK` (option `CDO_AUTO_CLOSE`, sysctl `dev.cdrom.autoclose`, active par défaut), ce que faisait le montage
+  lancé juste après une éjection quand le lecteur disait encore « disque présent ». L'appli coupe cette option
+  (`CDROM_CLEAR_OPTIONS`) à l'ouverture du lecteur et ne relit plus le disque pendant les 6 s qui suivent une
+  éjection.
 - **Changement de disque** : le lecteur est rouvert à chaque disque (le noyau relit sa taille), et la table des
   pistes d'un CD audio est relue toutes les 1,5 s : un échange que le noyau ne signale pas est vu quand même. Un
   « CD audio » plus long que 99 min (piste d'un DVD que certains lecteurs ne marquent pas comme données) est traité
@@ -58,7 +86,13 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 - **DVD du commerce protégés (CSS)** : VLC a de quoi les déchiffrer, mais l'image ISO transmise par l'appli passe par
   le pilote du lecteur sans l'authentification CSS : des DVD protégés risquent de ne pas se lire. Les DVD non protégés
   (gravés, vidéos perso) se lisent.
-- **CD audio** : pas encore de titres (CD-Text, base de données en ligne) : les pistes s'appellent « Piste N ».
+- **CD audio** : titres par MusicBrainz seulement (pas de CD-Text) ; sans réseau ni infos enregistrées, les pistes
+  s'appellent « Piste N ».
+- **Lecture vérifiée** : le bloc de 20 s (3,5 Mo) dépasse le cache des lecteurs fins courants (2 Mo), pour que la
+  deuxième lecture vienne du disque ; un lecteur avec un plus gros cache peut renvoyer sa copie, la comparaison ne
+  prouve alors rien. Pas de correction de décalage de lecture (« read offset ») ni de vérification AccurateRip.
+- **Extraction FLAC** : encodeur simple (prédicteurs fixes, pas de LPC) : fichiers un peu plus gros qu'avec
+  `flac -5` (taille de `flac -1`/`-2` environ), et l'encodage se fait pendant la lecture du disque.
 - **Montage visible par les autres applis** : le disque est monté dans l'espace de montage global (`su -mm`) ; selon le
   gestionnaire root, les autres applis peuvent ne pas le voir. L'appli, elle, le voit toujours.
 - Le lecteur n'est surveillé que quand l'appli est ouverte ou qu'elle joue.
@@ -68,8 +102,14 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 - `app/src/main/cpp/librehu_disc.c` : les ioctl CD-ROM du pilote `sr` (état du lecteur et du disque, table des
   matières, secteurs audio, capacité, éjection), inaccessibles depuis Java.
 - `drive/DiscDrive.kt` : surveillance du lecteur (`/sys/block/sr*`), accès root, montage.
-- `player/Playback.kt` : lecteur (CD : fil de lecture vers `AudioTrack` ; fichiers : `MediaPlayer`), session média,
-  focus audio ; `player/DiscService.kt` : service de lecture, notification, arbre `MediaBrowserService`.
+- `player/Playback.kt` : lecteur (CD : fil de lecture en avance + tampon anti-saut vers `AudioTrack` ; fichiers :
+  `MediaPlayer`), session média, focus audio ; `player/DiscService.kt` : service de lecture, notification, arbre
+  `MediaBrowserService`.
+- `meta/CdInfo.kt` : MusicBrainz / Cover Art Archive, cache hors ligne, disques en attente ; `drive/DiscId.kt` :
+  identifiant MusicBrainz du disque.
+- `rip/FlacWriter.kt`, `rip/WavWriter.kt` : écriture FLAC / WAV ; `rip/Ripper.kt` : extraction (lecture vérifiée,
+  destinations) ; `rip/RipService.kt` : service au premier plan, notification.
+- `ui/SettingsScreen.kt`, `ui/RipScreen.kt` : réglages, choix des pistes et progression de l'extraction.
 - `DiscFileProvider.kt` : fichiers du disque et disque entier (ISO) pour VLC et les autres applis.
 
 Compilation : `./gradlew :app:assembleRelease` (JDK 17+, SDK Android, NDK installé par Gradle). La CI

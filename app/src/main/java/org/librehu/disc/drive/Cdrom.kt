@@ -54,4 +54,7 @@ object Cdrom {
     @JvmStatic external fun eject(fd: Int): Int
 
     @JvmStatic external fun closeTray(fd: Int): Int
+
+    /** The tray no longer closes when something opens the drive (mount): only [closeTray] closes it. */
+    @JvmStatic external fun noAutoClose(fd: Int): Int
 }

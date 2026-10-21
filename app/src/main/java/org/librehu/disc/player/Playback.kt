@@ -24,7 +24,9 @@ import org.librehu.disc.drive.DiscDrive
 import org.librehu.disc.drive.DiscState
 import org.librehu.disc.meta.CdInfo
 import org.librehu.disc.meta.CdInfoStore
+import org.librehu.disc.rip.Ripper
 import java.io.File
+import java.util.concurrent.ArrayBlockingQueue
 
 /** One entry of the play queue: a CD track or a file of a data disc. */
 data class QueueItem(
@@ -59,6 +61,12 @@ object Playback {
 
     /** Back to the start of the track instead of the previous one after this. */
     private const val RESTART_MS = 3000L
+
+    /** Seconds of audio read ahead by default (anti-skip). */
+    const val ANTISKIP_DEFAULT = 10
+
+    /** Custom action of the session: the eject button of the LibreHU launcher's media card. */
+    const val ACTION_EJECT = "org.librehu.disc.action.EJECT"
 
     private lateinit var app: Context
     private lateinit var audio: AudioManager
@@ -100,6 +108,13 @@ object Playback {
                             mediaId: String,
                             extras: android.os.Bundle?,
                         ) = playFromMediaId(mediaId)
+
+                        override fun onCustomAction(
+                            action: String,
+                            extras: android.os.Bundle?,
+                        ) {
+                            if (action == ACTION_EJECT) eject()
+                        }
                     },
                 )
                 @Suppress("DEPRECATION")
@@ -175,7 +190,14 @@ object Playback {
     fun toggle() = if (_state.value.playing) pause() else resume()
 
     fun resume() {
-        val s = _state.value
+        var s = _state.value
+        // A CD track queued from a disc no longer in the drive (play from the launcher after an eject): forgotten.
+        val t = s.current?.track
+        if (t != null && (DiscDrive.state.value as? DiscState.AudioCd)?.tracks?.contains(t) != true) {
+            release()
+            update { PlayerState() }
+            s = _state.value
+        }
         if (s.current == null) {
             // Nothing queued: the CD in the drive from its first track.
             (DiscDrive.state.value as? org.librehu.disc.drive.DiscState.AudioCd)?.let { playQueue(cdQueue(it.tracks), 0) }
@@ -204,6 +226,12 @@ object Playback {
     fun next() {
         val s = _state.value
         if (s.index + 1 < s.queue.size) playIndex(s.index + 1) else stop()
+    }
+
+    /** Stops playback (everything queued is read from the disc) and opens the tray. */
+    fun eject() {
+        stop()
+        DiscDrive.eject()
     }
 
     fun previous() {
@@ -239,8 +267,11 @@ object Playback {
         update { it.copy(playing = true, positionMs = fromMs, error = null) }
         startService()
         when {
+            // The drive is being read by a rip
+            item.track != null && Ripper.busy -> fail(app.getString(R.string.rip_busy))
             item.track != null -> {
-                cd = CdThread(item.track, (fromMs * Cdrom.FRAMES_PER_SECOND / 1000).toInt()).also { it.start() }
+                val ahead = app.getSharedPreferences("disc", Context.MODE_PRIVATE).getInt("antiskip", ANTISKIP_DEFAULT)
+                cd = CdThread(item.track, (fromMs * Cdrom.FRAMES_PER_SECOND / 1000).toInt(), ahead).also { it.start() }
             }
             item.file != null -> {
                 try {
@@ -286,10 +317,16 @@ object Playback {
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
             .build()
 
-    /** Reads audio sectors from the drive into an AudioTrack, track after track (gapless). */
+    /**
+     * Plays CD tracks, gapless: a reader thread reads the sectors ahead of time into a buffer, this thread writes them
+     * to the AudioTrack. Anti-skip option (pref `antiskip`, seconds): the reader keeps that much audio ahead, so that a
+     * jolt of the road (the drive loses its track, reads fail for a moment) is read again before the buffer runs out
+     * instead of being heard. Without it, 1/3 s ahead.
+     */
     private class CdThread(
         first: CdTrack,
         startFrame: Int,
+        aheadSeconds: Int,
     ) : Thread("cd-audio") {
         @Volatile
         var paused = false
@@ -297,6 +334,7 @@ object Playback {
         @Volatile
         private var running = true
 
+        /** Track and sector last given to the AudioTrack (position, queue index). */
         @Volatile
         private var track = first
 
@@ -305,6 +343,23 @@ object Playback {
 
         @Volatile
         private var seekTo = -1
+
+        /** Retries of a sector before it is played as silence: more with a buffer, which gives the time. */
+        private val retries = if (aheadSeconds > 0) 12 else 3
+
+        private val buffer: ArrayBlockingQueue<Chunk> =
+            ArrayBlockingQueue(maxOf(2, aheadSeconds * Cdrom.FRAMES_PER_SECOND / CHUNK_FRAMES))
+        private var reader: Reader? = null
+
+        /** Sectors of a track, or the end of the queue ([track] null), or the disc gone ([gone]), from reader [src]. */
+        private class Chunk(
+            val src: Any,
+            val track: CdTrack?,
+            val lba: Int,
+            val frames: Int,
+            val data: ByteArray,
+            val gone: Boolean = false,
+        )
 
         private val out: AudioTrack =
             AudioTrack
@@ -339,14 +394,87 @@ object Playback {
 
         fun finish() {
             running = false
+            reader?.finish()
             interrupt()
         }
 
+        /** Reads from [from] on into [buffer], the next queued tracks after the end of [from]'s track. */
+        private inner class Reader(
+            private var t: CdTrack,
+            private var at: Int,
+        ) : Thread("cd-read") {
+            @Volatile
+            private var on = true
+
+            fun finish() {
+                on = false
+                interrupt()
+            }
+
+            override fun run() {
+                var errors = 0
+                try {
+                    while (on && running) {
+                        if (at >= t.endLba) {
+                            val next = Playback.nextCd(t)
+                            if (next == null) {
+                                put(Chunk(this, null, at, 0, ByteArray(0)))
+                                return
+                            }
+                            t = next
+                            at = next.startLba
+                            continue
+                        }
+                        val fd = DiscDrive.fd
+                        if (fd < 0) {
+                            put(Chunk(this, null, at, 0, ByteArray(0), gone = true))
+                            return
+                        }
+                        val frames = minOf(CHUNK_FRAMES, t.endLba - at)
+                        val buf = ByteArray(frames * Cdrom.FRAME_BYTES)
+                        val r = Cdrom.readAudio(fd, at, frames, buf)
+                        if (r < 0) {
+                            // Disc removed or tray opened: stop, the drive watcher reads what is there now.
+                            if (Cdrom.driveStatus(fd) != Cdrom.CDS_DISC_OK) {
+                                Log.i(TAG, "read error $r at LBA $at: no disc any more")
+                                put(Chunk(this, null, at, 0, ByteArray(0), gone = true))
+                                return
+                            }
+                            // Jolt, scratch or bad sector: read again, then play it as silence instead of stopping.
+                            if (++errors < retries) {
+                                if (errors > 1) sleep(40L * errors)
+                                continue
+                            }
+                            Log.w(TAG, "read error $r at LBA $at")
+                        } else if (errors > 0) {
+                            Log.i(TAG, "LBA $at read after ${errors + 1} tries")
+                        }
+                        errors = 0
+                        put(Chunk(this, t, at, frames, buf))
+                        at += frames
+                    }
+                } catch (_: InterruptedException) {
+                }
+            }
+
+            private fun put(c: Chunk) {
+                while (on && running) if (buffer.offer(c, 100, java.util.concurrent.TimeUnit.MILLISECONDS)) return
+            }
+        }
+
+        private fun startReader(
+            t: CdTrack,
+            at: Int,
+        ) {
+            reader?.finish()
+            buffer.clear()
+            reader = Reader(t, at).also { it.start() }
+        }
+
         override fun run() {
-            val buf = ByteArray(CHUNK_FRAMES * Cdrom.FRAME_BYTES)
-            var errors = 0
             out.play()
             try {
+                startReader(track, lba)
                 while (running) {
                     if (paused) {
                         if (out.playState == AudioTrack.PLAYSTATE_PLAYING) {
@@ -363,37 +491,30 @@ object Playback {
                         out.pause()
                         out.flush()
                         lba = s.coerceIn(track.startLba, track.endLba - 1)
+                        startReader(track, lba)
                         out.play()
                     }
-                    if (lba >= track.endLba) {
-                        if (!advance()) break
-                        continue
+                    val c = buffer.poll(100, java.util.concurrent.TimeUnit.MILLISECONDS) ?: continue
+                    // Read before a seek by the reader stopped then
+                    if (seekTo >= 0 || c.src !== reader) continue
+                    if (c.gone) {
+                        DiscDrive.refresh()
+                        break
                     }
-                    val fd = DiscDrive.fd
-                    if (fd < 0) break
-                    val frames = minOf(CHUNK_FRAMES, track.endLba - lba)
-                    val r = Cdrom.readAudio(fd, lba, frames, buf)
-                    if (r < 0) {
-                        // Disc removed or tray opened: stop, the drive watcher reads what is there now.
-                        if (Cdrom.driveStatus(fd) != Cdrom.CDS_DISC_OK) {
-                            Log.i(TAG, "read error $r at LBA $lba: no disc any more")
-                            DiscDrive.refresh()
-                            break
-                        }
-                        // Scratch or bad sector: retry, then skip it with silence instead of stopping.
-                        if (++errors < 3) continue
-                        Log.w(TAG, "read error $r at LBA $lba")
-                        buf.fill(0, 0, frames * Cdrom.FRAME_BYTES)
-                        out.write(buf, 0, frames * Cdrom.FRAME_BYTES)
-                    } else {
-                        out.write(buf, 0, r)
-                        Spectrum.feed(buf, r, out.bufferSizeInFrames * 1000L / 44100)
+                    val t = c.track
+                    if (t == null) break
+                    if (t != track) {
+                        // Into the next track: the queue follows (gapless).
+                        Playback.enterCd(t)
+                        track = t
                     }
-                    errors = 0
-                    lba += frames
+                    out.write(c.data, 0, c.data.size)
+                    Spectrum.feed(c.data, c.data.size, out.bufferSizeInFrames * 1000L / 44100)
+                    lba = c.lba + c.frames
                 }
             } catch (_: InterruptedException) {
             } finally {
+                reader?.finish()
                 Spectrum.rest()
                 runCatching {
                     out.pause()
@@ -403,22 +524,21 @@ object Playback {
             }
             if (running) Playback.onCdEnded()
         }
-
-        /** Next queued CD track without a gap, or false at the end of the queue. */
-        private fun advance(): Boolean {
-            val next = Playback.advanceCd() ?: return false
-            track = next
-            lba = next.startLba
-            return true
-        }
     }
 
+    /** The CD track queued after [t], or null at the end of the queue. */
     @Synchronized
-    private fun advanceCd(): CdTrack? {
-        val s = _state.value
-        val next = s.queue.getOrNull(s.index + 1)?.track ?: return null
-        update { it.copy(index = s.index + 1, positionMs = 0) }
-        return next
+    private fun nextCd(t: CdTrack): CdTrack? {
+        val q = _state.value.queue
+        val i = q.indexOfFirst { it.track == t }
+        return if (i >= 0) q.getOrNull(i + 1)?.track else null
+    }
+
+    /** The CD thread plays [t] now: it becomes the current queue item. */
+    @Synchronized
+    private fun enterCd(t: CdTrack) {
+        val i = _state.value.queue.indexOfFirst { it.track == t }
+        if (i >= 0) update { it.copy(index = i, positionMs = 0) }
     }
 
     private fun onCdEnded() {
@@ -519,6 +639,10 @@ object Playback {
                     PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or
                         PlaybackState.ACTION_STOP or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS or
                         PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_QUEUE_ITEM or PlaybackState.ACTION_PLAY_FROM_MEDIA_ID,
+                ).addCustomAction(
+                    PlaybackState.CustomAction
+                        .Builder(ACTION_EJECT, app.getString(R.string.eject), R.drawable.ic_eject)
+                        .build(),
                 ).setActiveQueueItemId(s.index.toLong())
                 .setState(
                     when {
