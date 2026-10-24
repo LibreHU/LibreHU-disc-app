@@ -120,6 +120,13 @@ Compilation : `./gradlew :app:assembleRelease` (JDK 17+, SDK Android, NDK instal
 
 Licence : GPL-2.0 (voir `LICENSE`). Police DSEG © keshikan, SIL Open Font License 1.1 (`third_party/DSEG-LICENSE.txt`).
 
+## Appli téléphone (LibreHU Bridge)
+
+Réglable depuis le téléphone par l'appli LibreHU Bridge (Android et iPhone), à travers LibreHU-service : lecture, pistes, lecture auto, anti-saut, MusicBrainz et extraction.
+Fournisseur `<paquet>.bridge` (`bridge/BridgeProvider.kt`), réservé aux applis signées avec la clé LibreHU (permission
+`org.librehu.permission.BRIDGE`, vérifiée dans `call()` lui-même) ; format décrit dans
+[LibreHU-service, docs/bridge.md](https://github.com/LibreHU/LibreHU-service/blob/main/docs/bridge.md).
+
 ## Optimisation (R8)
 
 L'APK publié par la CI (`assembleRelease`) est **optimisé par R8** : code et ressources réduits et optimisés, ce qui
