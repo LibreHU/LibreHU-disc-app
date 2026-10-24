@@ -70,7 +70,7 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
   sortie pour suivre ce qu'on entend), touches en relief (◄◄ ►‖ ►► ▲ LIST COLOR MODE), afficheur ambre, bleu glacier,
   vert ou rouge (COLOR). Bouton *Rétro* de l'écran moderne, touche MODE pour revenir.
 - **Root demandé au premier démarrage de LibreHU Launcher** avec les autres applis LibreHU
-  (`org.librehu.action.REQUEST_ROOT`, comme LibreHU FM).
+  (`org.librehu.action.REQUEST_ROOT`, comme LibreHU FM). Seule une appli signée avec la clé LibreHU peut l'envoyer (permission de signature `org.librehu.permission.ROOT_REQUEST`).
 
 ## Ce qu'il faut
 

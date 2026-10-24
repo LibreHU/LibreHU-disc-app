@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Root asked for every LibreHU app at once (LibreHU Launcher): requests and answers between apps signed with
+         the LibreHU key only. Defined by every LibreHU app, so that it exists whatever the install order. -->
+    <permission
+        android:name="org.librehu.permission.ROOT_REQUEST"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="org.librehu.permission.ROOT_REQUEST" />
+
     <!-- Playback in the background with its notification. -->
     <!-- MusicBrainz / Cover Art Archive: album, titles and cover of audio CDs (option) -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -78,7 +85,8 @@
         <!-- LibreHU Launcher's first start: root asked for every LibreHU app at once (RootRequestReceiver). -->
         <receiver
             android:name=".RootRequestReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="org.librehu.permission.ROOT_REQUEST">
             <intent-filter>
                 <action android:name="org.librehu.action.REQUEST_ROOT" />
             </intent-filter>
