@@ -6,6 +6,15 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 
 **Non testé sur l'autoradio à ce stade.**
 
+## Captures d'écran
+
+| | |
+|---|---|
+| ![Écran principal](docs/screenshots/main.png)<br>Écran principal | ![Réglages](docs/screenshots/settings.png)<br>Réglages |
+| ![Réglages (2)](docs/screenshots/settings-2.png)<br>Réglages (2) |   |
+
+Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), sans autoradio branché : les valeurs du véhicule et de la MCU sont vides. Refaites-les avec l'action **Screenshots** de [LibreHU-OTA-app](https://github.com/LibreHU/LibreHU-OTA-app/tree/main/screenshots). Galerie : [librehu.github.io/screenshots/disc.html](https://librehu.github.io/screenshots/disc.html).
+
 ## Ce que fait l'appli
 
 | Disque | Lecture |
