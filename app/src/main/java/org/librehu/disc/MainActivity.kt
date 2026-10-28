@@ -19,6 +19,12 @@ import java.io.File
 
 /** The drive, the disc and the player. */
 class MainActivity : ComponentActivity() {
+    /** A click on each tap, the sound of LibreHU Launcher's style (see KeyClick). */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        org.librehu.disc.ui.KeyClick.onTouch(this, ev, org.librehu.disc.ui.RetroLook.style)
+        return super.dispatchTouchEvent(ev)
+    }
+
     private val theme =
         lazy {
             ThemeFollower(this) { dark, accent ->

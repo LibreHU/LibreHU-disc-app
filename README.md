@@ -148,6 +148,11 @@ que R8 a retiré) et ajouter une règle `-keep`.
 
 **Styles Modularer Infotainment-Baukasten et LHU-Link de LibreHU Launcher** : c'est le launcher qui les choisit et les demande à l'appli (il publie `style` = `factory` ou `ambient`, comme pour le style rétro) ; l'appli suit tout de suite : palette noire du style même en mode jour, coins carrés partout, police Source Sans 3 pour Modularer Infotainment-Baukasten (SIL OFL 1.1, `third_party/SourceSans3-LICENSE.md`), lettres fines pour LHU-Link. Rien à régler dans l'appli.
 
+**Son des touches** : chaque toucher (sans glisser ni appui long) fait un petit son qui suit le style que LibreHU
+Launcher demande à l'appli : tic doux (moderne), bip d'autoradio (rétro), « toc » amorti (Modularer
+Infotainment-Baukasten), bip électronique montant (LHU-Link). Sons propres à LibreHU, synthétisés (`res/raw/click_*.wav`,
+`ui/KeyClick.kt`) ; coupé quand les « Sons des touches » d'Android sont désactivés (Paramètres → Son).
+
 L'écran du lecteur prend aussi la **mise en page** de ces styles (`ui/DiscStyled.kt`, éléments communs dans
 `ui/CarKit.kt`) : **Modularer Infotainment-Baukasten** = titre, artiste et album avec leurs icônes à gauche, la
 pochette à droite (halo de la couleur d'accent sous elle pendant la lecture), la progression sur une ligne (un toucher
