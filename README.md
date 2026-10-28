@@ -11,7 +11,8 @@ l'autoradio Jancar / Autochips AC8257 (UJC201). Thème clair / sombre et couleur
 | | |
 |---|---|
 | ![Écran principal](docs/screenshots/main.png)<br>Écran principal | ![Réglages](docs/screenshots/settings.png)<br>Réglages |
-| ![Réglages (2)](docs/screenshots/settings-2.png)<br>Réglages (2) |   |
+| ![Réglages (2)](docs/screenshots/settings-2.png)<br>Réglages (2) | ![Style Modularer Infotainment-Baukasten](docs/screenshots/style-mib.png)<br>Style Modularer Infotainment-Baukasten |
+| ![Style LHU-Link](docs/screenshots/style-lhu-link.png)<br>Style LHU-Link |   |
 
 Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), sans autoradio branché : les valeurs du véhicule et de la MCU sont vides. Refaites-les avec l'action **Screenshots** de [LibreHU-OTA-app](https://github.com/LibreHU/LibreHU-OTA-app/tree/main/screenshots). Galerie : [librehu.github.io/screenshots/disc.html](https://librehu.github.io/screenshots/disc.html).
 
@@ -146,6 +147,14 @@ une fonction plante avec « class / method not found », regarder `usage.txt` da
 que R8 a retiré) et ajouter une règle `-keep`.
 
 **Styles Modularer Infotainment-Baukasten et LHU-Link de LibreHU Launcher** : c'est le launcher qui les choisit et les demande à l'appli (il publie `style` = `factory` ou `ambient`, comme pour le style rétro) ; l'appli suit tout de suite : palette noire du style même en mode jour, coins carrés partout, police Source Sans 3 pour Modularer Infotainment-Baukasten (SIL OFL 1.1, `third_party/SourceSans3-LICENSE.md`), lettres fines pour LHU-Link. Rien à régler dans l'appli.
+
+L'écran du lecteur prend aussi la **mise en page** de ces styles (`ui/DiscStyled.kt`, éléments communs dans
+`ui/CarKit.kt`) : **Modularer Infotainment-Baukasten** = titre, artiste et album avec leurs icônes à gauche, la
+pochette à droite (halo de la couleur d'accent sous elle pendant la lecture), la progression sur une ligne (un toucher
+déplace la lecture), touches du bas Éjecter, Parcourir (pistes ou fichiers du disque), précédent, lecture / pause,
+suivant, Extraire, Réglages ; **LHU-Link** = onglets Lecture / Pistes, pochette encadrée, barre de progression
+encadrée avec les temps, touches précédent / lecture / suivant côte à côte, barre du bas Retour / Éjecter / Options
+(extraire, fermer le tiroir, relire, réglages). Aucun logo, nom, icône, police ni image d'un constructeur.
 
 **Style rétro et police de LibreHU Launcher** : quand le launcher est en style rétro (les couleurs d'un afficheur
 d'autoradio tirées de sa couleur d'accent, couleur RGB comprise), cette appli prend sa palette (jour ou nuit) ; quand

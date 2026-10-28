@@ -114,6 +114,12 @@ fun DiscScreen(
         RipScreen(audioCd, info, onBack = { page = "main" }, onSettings = { page = "settings" })
         return
     }
+    // LibreHU Launcher's car styles: the launcher asks the app for them (see RetroLook).
+    if (RetroLook.factory || RetroLook.ambient) {
+        val screens = DiscScreens(disc, player, info, rip, openFile, openDvd, onRip = { page = "rip" }, onSettings = { page = "settings" })
+        if (RetroLook.factory) FactoryDisc(screens) else AmbientDisc(screens)
+        return
+    }
     if (retro) {
         RetroScreen(
             disc,
@@ -262,7 +268,7 @@ private fun NowPlaying(p: PlayerState) {
 }
 
 @Composable
-private fun TrackList(
+internal fun TrackList(
     cd: DiscState.AudioCd,
     p: PlayerState,
     info: CdInfo?,
@@ -282,7 +288,7 @@ private fun TrackList(
 }
 
 @Composable
-private fun DataDisc(
+internal fun DataDisc(
     d: DiscState.DataDisc,
     p: PlayerState,
     openFile: (File) -> Unit,
@@ -352,7 +358,7 @@ private fun DataDisc(
 }
 
 @Composable
-private fun Hint(
+internal fun Hint(
     disc: DiscState? = null,
     text: String? = null,
 ) {

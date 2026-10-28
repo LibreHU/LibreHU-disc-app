@@ -83,4 +83,9 @@
     <string name="rip_disc_gone">disc removed</string>
     <string name="rip_no_folder">cannot create %1$s</string>
     <string name="unknown_artist">Unknown artist</string>
+    <!-- LibreHU Launcher's car styles (Modularer Infotainment-Baukasten, LHU-Link) -->
+    <string name="car_setup">Setup</string>
+    <string name="disc_browse">Browse</string>
+    <string name="disc_playback">Playback</string>
+    <string name="disc_tracks">Tracks</string>
 </resources>
