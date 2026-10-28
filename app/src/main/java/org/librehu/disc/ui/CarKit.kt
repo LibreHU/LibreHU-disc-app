@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ListAlt
@@ -37,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.heightIn
 
 /*
  * Screens of LibreHU Launcher's two car styles, for the LibreHU apps (the launcher asks the app for its style, see
@@ -751,4 +754,304 @@ internal fun FramedPicture(
             MetalIcon(Icons.Filled.Person, size * 0.62f)
         }
     }
+}
+
+internal val carStyled: Boolean get() = RetroLook.factory || RetroLook.ambient
+
+
+/** An action of a styled screen: a soft key (factory), the bar's main key then the Options lines (ambient). */
+internal class StyledAction(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
+
+/**
+ * A whole screen in the launcher's style: factory = framed Back, title over the accent line, [actions] as soft keys;
+ * ambient = title, the first action in the bottom bar, the others in Options.
+ */
+@Composable
+internal fun StyledFrame(
+    title: String,
+    actions: List<StyledAction>,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    if (RetroLook.factory) {
+        val keys = actions.take(7).map { SoftKey(it.label, it.icon, onClick = it.onClick) }
+        FactoryScreen(title, back = true, keys = keys + List(7 - keys.size) { null }) {
+            Box(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), content = content)
+        }
+    } else {
+        AmbientScreen(
+            title,
+            keys = actions.take(1).map { AmbientKey(it.label, onClick = it.onClick) },
+            options = actions.drop(1).map { AmbientOption(it.label, onClick = it.onClick) },
+            content = content,
+        )
+    }
+}
+
+/** A group of settings: its title over the accent line (factory), a frame of the accent colour (ambient). */
+@Composable
+internal fun StyledCard(
+    title: String?,
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    if (RetroLook.factory) {
+        Column(modifier.fillMaxWidth()) {
+            if (title != null) FactoryListTitle(title)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        }
+    } else {
+        Column(modifier.fillMaxWidth()) {
+            if (title != null) Text(title, color = KitLight, fontSize = 21.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .border(BorderStroke(1.dp, CarColors.Accent))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+/** A key with a word (and an icon): a white frame (factory), the bar buttons' light (ambient). */
+@Composable
+internal fun StyledPill(
+    label: String,
+    selected: Boolean = false,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val body: @Composable () -> Unit = {
+        Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(icon, null, tint = if (RetroLook.factory && selected) CarColors.Accent else KitLight, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                label,
+                color = if (RetroLook.factory && selected) CarColors.Accent else KitLight,
+                fontSize = 19.sp,
+                fontWeight = if (RetroLook.ambient) FontWeight.Light else FontWeight.Normal,
+                maxLines = 1,
+            )
+        }
+    }
+    val m = Modifier.height(52.dp).graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+    if (RetroLook.factory) {
+        FramedKey(m.then(if (selected) Modifier.border(BorderStroke(1.5.dp, CarColors.Accent)) else Modifier), onClick = { if (enabled) onClick() }) { body() }
+    } else {
+        AmbientGridKey(m, selected = selected, onClick = { if (enabled) onClick() }) { body() }
+    }
+}
+
+/** A setting on / off: a light bar with a square box (factory), a line with ON | OFF keys (ambient). */
+@Composable
+internal fun StyledSwitchRow(
+    title: String,
+    subtitle: String?,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onChange: (Boolean) -> Unit,
+) {
+    val m = Modifier.graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+    if (RetroLook.factory) {
+        Row(
+            m
+                .fillMaxWidth()
+                .heightIn(min = 76.dp)
+                .background(Brush.verticalGradient(listOf(Color(0xFFE2E3E5), Color(0xFFCDCED1))))
+                .clickable(enabled = enabled) { onChange(!checked) }
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = Color(0xFF26272A), fontSize = 24.sp)
+                if (subtitle != null) Text(subtitle, color = Color(0xFF55575C), fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(16.dp))
+            Box(Modifier.size(30.dp).border(BorderStroke(2.dp, Color(0xFF26272A))), contentAlignment = Alignment.Center) {
+                if (checked) Icon(Icons.Filled.Check, null, tint = Color(0xFF26272A), modifier = Modifier.size(26.dp))
+            }
+        }
+    } else {
+        Row(
+            m
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .clickable(enabled = enabled) { onChange(!checked) }
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = KitLight, fontSize = 21.sp, fontWeight = FontWeight.Light)
+                if (subtitle != null) Text(subtitle, color = KitDim, fontSize = 15.sp, fontWeight = FontWeight.Light)
+            }
+            Spacer(Modifier.width(16.dp))
+            // ON | OFF like the original: both brushed, the state in force marked by a red bar under its word.
+            Row(Modifier.border(BorderStroke(1.dp, CarColors.Accent))) {
+                for (on in listOf(true, false)) {
+                    Box(
+                        Modifier
+                            .width(68.dp)
+                            .height(46.dp)
+                            .background(Brush.verticalGradient(0.0225f to SHEEN, 0.4581f to Color.Black, 1f to deep(CarColors.Accent).copy(alpha = 0.7f)))
+                            .clickable(enabled = enabled) { onChange(on) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(if (on) "ON" else "OFF", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Light)
+                        if (on == checked) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 5.dp)
+                                    .width(44.dp)
+                                    .height(4.dp)
+                                    .background(SELECTION_DARK)
+                                    .border(BorderStroke(1.dp, SelectionRed)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A line of a list: icon, name (and a second line), a value on the right; selected in the accent colour or red. */
+@Composable
+internal fun StyledListRow(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    trailing: String? = null,
+    selected: Boolean = false,
+    onClick: () -> Unit,
+) {
+    if (RetroLook.factory) {
+        FactoryListRow(title, icon = icon, value = trailing ?: subtitle, selected = selected, onClick = onClick)
+    } else {
+        AmbientListRow(
+            title,
+            value = trailing ?: subtitle,
+            selected = selected,
+            leading = icon?.let { { MetalIcon(it, 30.dp) } },
+            onClick = onClick,
+        )
+    }
+}
+
+/** Rounded corners in the modern look, square in the launcher's car styles. */
+internal fun carShape(radius: Dp): androidx.compose.ui.graphics.Shape =
+    if (carStyled) androidx.compose.ui.graphics.RectangleShape else androidx.compose.foundation.shape.RoundedCornerShape(radius)
+
+/** A panel's background: [color] rounded (modern), none (factory), black framed in the accent colour (ambient). */
+internal fun Modifier.carPanel(
+    radius: Dp = 28.dp,
+    color: Color = CarColors.Surface,
+): Modifier =
+    when {
+        RetroLook.factory -> this
+        RetroLook.ambient -> background(Color.Black.copy(alpha = 0.6f)).border(1.dp, CarColors.Accent)
+        else -> clip(androidx.compose.foundation.shape.RoundedCornerShape(radius)).background(color)
+    }
+
+
+// --- Dialogs -----------------------------------------------------------------------------------------------------
+
+/**
+ * [androidx.compose.material3.AlertDialog] in the launcher's style: a square black box in a thin white frame
+ * (factory), night blue framed in the accent colour (ambient); the Material dialog otherwise. Same slots.
+ */
+@Composable
+internal fun CarAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissButton: @Composable (() -> Unit)? = null,
+    icon: @Composable (() -> Unit)? = null,
+    title: @Composable (() -> Unit)? = null,
+    text: @Composable (() -> Unit)? = null,
+    properties: androidx.compose.ui.window.DialogProperties = androidx.compose.ui.window.DialogProperties(),
+) {
+    if (!carStyled) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onDismissRequest,
+            confirmButton = confirmButton,
+            modifier = modifier,
+            dismissButton = dismissButton,
+            icon = icon,
+            title = title,
+            text = text,
+            properties = properties,
+        )
+        return
+    }
+    val factory = RetroLook.factory
+    val accent = CarColors.Accent
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest, properties = properties) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides Color.White,
+            androidx.compose.material3.LocalTextStyle provides
+                androidx.compose.ui.text.TextStyle(
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = if (factory) FontWeight.Normal else FontWeight.Light,
+                ),
+        ) {
+            Column(
+                modifier
+                    .width(560.dp)
+                    .background(if (factory) Color.Black else Color(0xF20E1626))
+                    .border(BorderStroke(if (factory) 1.5.dp else 1.dp, if (factory) Color(0xFFE6E6E6) else accent)),
+            ) {
+                if (icon != null || title != null) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (icon != null) {
+                            icon()
+                            Spacer(Modifier.width(16.dp))
+                        }
+                        if (title != null) {
+                            androidx.compose.runtime.CompositionLocalProvider(
+                                androidx.compose.material3.LocalTextStyle provides
+                                    androidx.compose.material3.LocalTextStyle.current.copy(
+                                        fontSize = 24.sp,
+                                        fontWeight = if (factory) FontWeight.SemiBold else FontWeight.Light,
+                                    ),
+                            ) { title() }
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (factory) accent else accent.copy(alpha = 0.8f)))
+                }
+                if (text != null) {
+                    Box(Modifier.fillMaxWidth().heightIn(max = 460.dp).padding(horizontal = 20.dp, vertical = 12.dp)) { text() }
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(if (factory) LINE else accent.copy(alpha = 0.8f)))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    dismissButton?.invoke()
+                    Spacer(Modifier.width(8.dp))
+                    confirmButton()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A Material screen of the app inside the launcher's frame when a car style is on ([StyledFrame]: framed Back and
+ * title, bars), as it is otherwise; the screen hides its own title row then.
+ */
+@Composable
+internal fun StyledPage(
+    title: String,
+    actions: List<StyledAction> = emptyList(),
+    content: @Composable () -> Unit,
+) {
+    if (carStyled) StyledFrame(title, actions) { content() } else content()
 }

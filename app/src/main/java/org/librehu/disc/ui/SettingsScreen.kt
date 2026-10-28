@@ -81,89 +81,91 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
         }
 
-    Column(Modifier.fillMaxSize().background(CarColors.Background).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Pill(stringResource(R.string.up), icon = Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
-            Text(stringResource(R.string.settings), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
-        }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
-            item {
-                Card(stringResource(R.string.settings_playback)) {
-                    SwitchRow(stringResource(R.string.autoplay), autoplay) {
-                        autoplay = it
-                        p.edit().putBoolean("autoplay", it).apply()
-                    }
-                    Text(stringResource(R.string.antiskip), color = CarColors.Text, fontSize = 17.sp)
-                    Text(stringResource(R.string.antiskip_hint), color = CarColors.TextDim, fontSize = 14.sp)
-                    Choice(listOf(0, 5, 10, 20, 40), antiskip, { if (it == 0) stringResource(R.string.off) else "$it s" }) {
-                        antiskip = it
-                        p.edit().putInt("antiskip", it).apply()
+    StyledPage(stringResource(R.string.settings)) {
+        Column(if (carStyled) Modifier.fillMaxSize() else Modifier.fillMaxSize().background(CarColors.Background).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!carStyled) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Pill(stringResource(R.string.up), icon = Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
+                Text(stringResource(R.string.settings), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+            }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
+                item {
+                    Card(stringResource(R.string.settings_playback)) {
+                        SwitchRow(stringResource(R.string.autoplay), autoplay) {
+                            autoplay = it
+                            p.edit().putBoolean("autoplay", it).apply()
+                        }
+                        Text(stringResource(R.string.antiskip), color = CarColors.Text, fontSize = 17.sp)
+                        Text(stringResource(R.string.antiskip_hint), color = CarColors.TextDim, fontSize = 14.sp)
+                        Choice(listOf(0, 5, 10, 20, 40), antiskip, { if (it == 0) stringResource(R.string.off) else "$it s" }) {
+                            antiskip = it
+                            p.edit().putInt("antiskip", it).apply()
+                        }
                     }
                 }
-            }
-            item {
-                Card(stringResource(R.string.settings_info)) {
-                    SwitchRow(stringResource(R.string.musicbrainz), online) {
-                        online = it
-                        p.edit().putBoolean("musicbrainz", it).apply()
-                        if (it) CdInfoStore.retry()
-                    }
-                    SwitchRow(stringResource(R.string.mb_keep), keep) {
-                        keep = it
-                        p.edit().putBoolean("mb_keep", it).apply()
-                        CdInfoStore.keepChanged()
-                    }
-                    SwitchRow(stringResource(R.string.mb_offline), offline) {
-                        offline = it
-                        p.edit().putBoolean("mb_offline", it).apply()
-                        if (!it) CdInfoStore.retry()
-                    }
-                    Text(stringResource(R.string.mb_offline_hint), color = CarColors.TextDim, fontSize = 14.sp)
-                    Text(
-                        stringResource(R.string.mb_stats, stats.discs, size(stats.bytes), stats.pending),
-                        color = CarColors.TextDim,
-                        fontSize = 15.sp,
-                    )
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (stats.pending > 0 && online && !offline) {
-                            Pill(stringResource(R.string.mb_lookup_now), icon = Icons.Default.Refresh) { CdInfoStore.lookUpPending() }
+                item {
+                    Card(stringResource(R.string.settings_info)) {
+                        SwitchRow(stringResource(R.string.musicbrainz), online) {
+                            online = it
+                            p.edit().putBoolean("musicbrainz", it).apply()
+                            if (it) CdInfoStore.retry()
                         }
-                        Pill(stringResource(R.string.mb_clear), icon = Icons.Default.Delete) { CdInfoStore.clear() }
+                        SwitchRow(stringResource(R.string.mb_keep), keep) {
+                            keep = it
+                            p.edit().putBoolean("mb_keep", it).apply()
+                            CdInfoStore.keepChanged()
+                        }
+                        SwitchRow(stringResource(R.string.mb_offline), offline) {
+                            offline = it
+                            p.edit().putBoolean("mb_offline", it).apply()
+                            if (!it) CdInfoStore.retry()
+                        }
+                        Text(stringResource(R.string.mb_offline_hint), color = CarColors.TextDim, fontSize = 14.sp)
+                        Text(
+                            stringResource(R.string.mb_stats, stats.discs, size(stats.bytes), stats.pending),
+                            color = CarColors.TextDim,
+                            fontSize = 15.sp,
+                        )
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (stats.pending > 0 && online && !offline) {
+                                Pill(stringResource(R.string.mb_lookup_now), icon = Icons.Default.Refresh) { CdInfoStore.lookUpPending() }
+                            }
+                            Pill(stringResource(R.string.mb_clear), icon = Icons.Default.Delete) { CdInfoStore.clear() }
+                        }
                     }
                 }
-            }
-            item {
-                Card(stringResource(R.string.settings_rip)) {
-                    Text(stringResource(R.string.rip_format), color = CarColors.Text, fontSize = 17.sp)
-                    Choice(listOf("flac", "wav"), rip.format, { if (it == "flac") stringResource(R.string.rip_flac) else stringResource(R.string.rip_wav) }) {
-                        saveRip(rip.copy(format = it))
-                    }
-                    SwitchRow(stringResource(R.string.rip_secure), rip.secure) { saveRip(rip.copy(secure = it)) }
-                    Text(stringResource(R.string.rip_secure_hint), color = CarColors.TextDim, fontSize = 14.sp)
-                    Text(stringResource(R.string.rip_retries), color = CarColors.Text, fontSize = 17.sp)
-                    Choice(listOf(3, 10, 30), rip.retries, { "$it" }) { saveRip(rip.copy(retries = it)) }
-                    Text(stringResource(R.string.rip_naming), color = CarColors.Text, fontSize = 17.sp)
-                    Choice(listOf("nt", "nat", "at"), rip.naming, {
-                        when (it) {
-                            "nat" -> stringResource(R.string.rip_naming_nat)
-                            "at" -> stringResource(R.string.rip_naming_at)
-                            else -> stringResource(R.string.rip_naming_nt)
+                item {
+                    Card(stringResource(R.string.settings_rip)) {
+                        Text(stringResource(R.string.rip_format), color = CarColors.Text, fontSize = 17.sp)
+                        Choice(listOf("flac", "wav"), rip.format, { if (it == "flac") stringResource(R.string.rip_flac) else stringResource(R.string.rip_wav) }) {
+                            saveRip(rip.copy(format = it))
                         }
-                    }) { saveRip(rip.copy(naming = it)) }
-                    SwitchRow(stringResource(R.string.rip_folders), rip.folders) { saveRip(rip.copy(folders = it)) }
-                    SwitchRow(stringResource(R.string.rip_tags), rip.tags) { saveRip(rip.copy(tags = it)) }
-                    Text(stringResource(R.string.rip_destination), color = CarColors.Text, fontSize = 17.sp)
-                    Text(
-                        rip.tree?.let { Uri.decode(Uri.parse(it).lastPathSegment ?: it) } ?: stringResource(R.string.rip_dest_music),
-                        color = CarColors.TextDim,
-                        fontSize = 15.sp,
-                    )
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Pill(stringResource(R.string.rip_dest_music), selected = rip.tree == null) { saveRip(rip.copy(tree = null)) }
-                        Pill(stringResource(R.string.rip_pick_folder), selected = rip.tree != null, icon = Icons.Default.Folder) {
-                            runCatching { pickFolder.launch(null) }
+                        SwitchRow(stringResource(R.string.rip_secure), rip.secure) { saveRip(rip.copy(secure = it)) }
+                        Text(stringResource(R.string.rip_secure_hint), color = CarColors.TextDim, fontSize = 14.sp)
+                        Text(stringResource(R.string.rip_retries), color = CarColors.Text, fontSize = 17.sp)
+                        Choice(listOf(3, 10, 30), rip.retries, { "$it" }) { saveRip(rip.copy(retries = it)) }
+                        Text(stringResource(R.string.rip_naming), color = CarColors.Text, fontSize = 17.sp)
+                        Choice(listOf("nt", "nat", "at"), rip.naming, {
+                            when (it) {
+                                "nat" -> stringResource(R.string.rip_naming_nat)
+                                "at" -> stringResource(R.string.rip_naming_at)
+                                else -> stringResource(R.string.rip_naming_nt)
+                            }
+                        }) { saveRip(rip.copy(naming = it)) }
+                        SwitchRow(stringResource(R.string.rip_folders), rip.folders) { saveRip(rip.copy(folders = it)) }
+                        SwitchRow(stringResource(R.string.rip_tags), rip.tags) { saveRip(rip.copy(tags = it)) }
+                        Text(stringResource(R.string.rip_destination), color = CarColors.Text, fontSize = 17.sp)
+                        Text(
+                            rip.tree?.let { Uri.decode(Uri.parse(it).lastPathSegment ?: it) } ?: stringResource(R.string.rip_dest_music),
+                            color = CarColors.TextDim,
+                            fontSize = 15.sp,
+                        )
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Pill(stringResource(R.string.rip_dest_music), selected = rip.tree == null) { saveRip(rip.copy(tree = null)) }
+                            Pill(stringResource(R.string.rip_pick_folder), selected = rip.tree != null, icon = Icons.Default.Folder) {
+                                runCatching { pickFolder.launch(null) }
+                            }
                         }
                     }
                 }

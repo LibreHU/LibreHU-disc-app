@@ -435,6 +435,10 @@ internal fun SwitchRow(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
+    if (carStyled) {
+        StyledSwitchRow(label, null, checked, onChange = onChange)
+        return
+    }
     Row(Modifier.fillMaxWidth().clickable { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = CarColors.Text, fontSize = 17.sp, modifier = Modifier.weight(1f))
         Switch(
@@ -450,6 +454,10 @@ internal fun Card(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    if (carStyled) {
+        StyledCard(title) { content() }
+        return
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -470,6 +478,10 @@ internal fun Pill(
     icon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
+    if (carStyled) {
+        StyledPill(label, selected, icon, onClick = onClick)
+        return
+    }
     Row(
         Modifier
             .heightIn(min = 48.dp)

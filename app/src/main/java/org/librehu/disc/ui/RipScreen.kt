@@ -66,50 +66,52 @@ fun RipScreen(
     val permission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) go() }
 
-    Row(Modifier.fillMaxSize().background(CarColors.Background).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.weight(0.42f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Pill(stringResource(R.string.up), icon = Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
-                Text(stringResource(R.string.rip), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+    StyledPage(stringResource(R.string.rip)) {
+        Row(if (carStyled) Modifier.fillMaxSize() else Modifier.fillMaxSize().background(CarColors.Background).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(0.42f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!carStyled) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Pill(stringResource(R.string.up), icon = Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
+                    Text(stringResource(R.string.rip), color = CarColors.Text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                }
+                Card(stringResource(R.string.settings_rip)) {
+                    Text(
+                        listOf(
+                            if (o.format == "wav") stringResource(R.string.rip_wav) else stringResource(R.string.rip_flac),
+                            if (o.secure) stringResource(R.string.rip_secure) else null,
+                            if (o.tags) stringResource(R.string.rip_tags) else null,
+                        ).filterNotNull().joinToString(" · "),
+                        color = CarColors.TextDim,
+                        fontSize = 15.sp,
+                    )
+                    Text(
+                        if (o.tree == null) stringResource(R.string.rip_dest_music) else stringResource(R.string.rip_dest_folder),
+                        color = CarColors.TextDim,
+                        fontSize = 15.sp,
+                    )
+                    Pill(stringResource(R.string.settings), onClick = onSettings)
+                }
+                Choice(listOf(true, false), selected.size == cd.tracks.size, { if (it) stringResource(R.string.all) else stringResource(R.string.none) }) {
+                    selected = if (it) cd.tracks.map { t -> t.number }.toSet() else emptySet()
+                }
+                Pill(stringResource(R.string.rip_start, selected.size), selected = selected.isNotEmpty(), icon = Icons.Default.Download) {
+                    if (selected.isEmpty()) return@Pill
+                    val needs =
+                        o.tree == null && Build.VERSION.SDK_INT <= 28 &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                    if (needs) permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else go()
+                }
             }
-            Card(stringResource(R.string.settings_rip)) {
-                Text(
-                    listOf(
-                        if (o.format == "wav") stringResource(R.string.rip_wav) else stringResource(R.string.rip_flac),
-                        if (o.secure) stringResource(R.string.rip_secure) else null,
-                        if (o.tags) stringResource(R.string.rip_tags) else null,
-                    ).filterNotNull().joinToString(" · "),
-                    color = CarColors.TextDim,
-                    fontSize = 15.sp,
-                )
-                Text(
-                    if (o.tree == null) stringResource(R.string.rip_dest_music) else stringResource(R.string.rip_dest_folder),
-                    color = CarColors.TextDim,
-                    fontSize = 15.sp,
-                )
-                Pill(stringResource(R.string.settings), onClick = onSettings)
-            }
-            Choice(listOf(true, false), selected.size == cd.tracks.size, { if (it) stringResource(R.string.all) else stringResource(R.string.none) }) {
-                selected = if (it) cd.tracks.map { t -> t.number }.toSet() else emptySet()
-            }
-            Pill(stringResource(R.string.rip_start, selected.size), selected = selected.isNotEmpty(), icon = Icons.Default.Download) {
-                if (selected.isEmpty()) return@Pill
-                val needs =
-                    o.tree == null && Build.VERSION.SDK_INT <= 28 &&
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                if (needs) permission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) else go()
-            }
-        }
-        LazyColumn(Modifier.weight(0.58f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
-            items(queue, key = { it.id }) { q ->
-                val n = q.track!!.number
-                val on = n in selected
-                ListRow(
-                    icon = if (on) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                    title = q.title,
-                    trailing = duration(q.durationMs),
-                    selected = false,
-                ) { selected = if (on) selected - n else selected + n }
+            LazyColumn(Modifier.weight(0.58f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
+                items(queue, key = { it.id }) { q ->
+                    val n = q.track!!.number
+                    val on = n in selected
+                    ListRow(
+                        icon = if (on) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                        title = q.title,
+                        trailing = duration(q.durationMs),
+                        selected = false,
+                    ) { selected = if (on) selected - n else selected + n }
+                }
             }
         }
     }
