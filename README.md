@@ -89,7 +89,9 @@ Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), san
   reconnu.
 - **Le root** (KernelSU Next, Magisk…) : le nœud du lecteur (`/dev/block/sr0`) est réservé à root et Android ne monte
   pas les disques optiques. L'appli ouvre le nœud (`chmod 0666`, une fois par branchement) et monte les disques de
-  données sur `/mnt/librehu_disc` avec `su`. Autorisez-la dans le gestionnaire root la première fois.
+  données sur `/mnt/librehu_disc` avec `su`. Autorisez-la dans le gestionnaire root la première fois. Le vieux `su`
+  d'AOSP de certaines ROM Jancar (`/system/xbin/su` : `su UID COMMANDE`, refuse `-c` avec « invalid uid/gid ») marche
+  aussi : `drive/Su.kt` lui donne `su 0 sh -c COMMANDE`, reconnu une fois par `su -v` (sans demande de root).
 - Un port USB en **mode hôte** et un lecteur CD / DVD USB alimenté (certains lecteurs fins demandent un câble en Y).
 - **VLC** pour les DVD vidéo.
 
@@ -106,7 +108,8 @@ Captures sur l'émulateur Android 11 (1280×720, 160 dpi comme l'autoradio), san
 - **Extraction FLAC** : encodeur simple (prédicteurs fixes, pas de LPC) : fichiers un peu plus gros qu'avec
   `flac -5` (taille de `flac -1`/`-2` environ), et l'encodage se fait pendant la lecture du disque.
 - **Montage visible par les autres applis** : le disque est monté dans l'espace de montage global (`su -mm`) ; selon le
-  gestionnaire root, les autres applis peuvent ne pas le voir. L'appli, elle, le voit toujours.
+  gestionnaire root, les autres applis peuvent ne pas le voir (avec le vieux `su` d'AOSP, qui n'a pas `-mm`, il reste
+  dans celui de l'appli). L'appli, elle, le voit toujours.
 - Le lecteur n'est surveillé que quand l'appli est ouverte ou qu'elle joue.
 
 ## Pour les développeurs

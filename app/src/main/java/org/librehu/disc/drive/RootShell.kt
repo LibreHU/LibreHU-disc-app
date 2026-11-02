@@ -4,8 +4,8 @@ import android.util.Log
 import java.util.concurrent.TimeUnit
 
 /**
- * Root commands (`su` of KernelSU / KernelSU Next, Magisk, APatch, SuperSU): the drive node is root-only
- * (`/dev/block/sr0`, 0600) and Android does not mount optical discs.
+ * Root commands (`su` of KernelSU / KernelSU Next, Magisk, APatch, SuperSU, the old su of AOSP: [Su]): the drive node
+ * is root-only (`/dev/block/sr0`, 0600) and Android does not mount optical discs.
  */
 object RootShell {
     private const val TAG = "LibreHU-Disc"
@@ -18,14 +18,16 @@ object RootShell {
     ): String? =
         try {
             // -mm: in the global mount namespace, so that a mounted disc is seen by the other apps too.
-            val args = if (mountMaster) arrayOf("su", "-mm", "-c", cmd) else arrayOf("su", "-c", cmd)
-            val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+            val p = ProcessBuilder(*Su.argv(cmd, mountMaster)).redirectErrorStream(true).start()
             val out = p.inputStream.bufferedReader().readText()
             if (!p.waitFor(timeoutS, TimeUnit.SECONDS)) {
                 p.destroy()
                 null
             } else if (p.exitValue() == 0) {
                 out
+            } else if (Su.refused(out)) {
+                // The old su of AOSP refused -c before running anything: once more in its form.
+                run(cmd, mountMaster, timeoutS)
             } else {
                 Log.w(TAG, "su: $cmd -> ${p.exitValue()}: ${out.trim()}")
                 null
