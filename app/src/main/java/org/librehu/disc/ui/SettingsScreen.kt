@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +54,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var offline by remember { mutableStateOf(CdInfoStore.offline(context)) }
     val stats by CdInfoStore.stats.collectAsStateWithLifecycle()
     var rip by remember { mutableStateOf(RipOptions.load(context)) }
+    var info by remember { mutableStateOf(false) }
 
     fun saveRip(o: RipOptions) {
         rip = o
@@ -169,9 +171,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+                item { Pill(stringResource(R.string.info_title), icon = Icons.Default.Info) { info = true } }
             }
         }
     }
+    if (info) InfoDialog { info = false }
 }
 
 /** One of [options], as pills. */
