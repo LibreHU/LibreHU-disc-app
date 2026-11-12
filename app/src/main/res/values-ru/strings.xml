@@ -30,7 +30,7 @@
     <string name="reload">Перечитать</string>
     <string name="autoplay">Воспроизводить CD сразу после вставки</string>
     <string name="retro">Ретро</string>
-    <string name="up">Вверх</string>
+    <string name="up">Назад</string>
     <string name="play_all">Воспроизвести всё</string>
     <string name="no_app">Нет приложения, чтобы открыть этот файл</string>
     <string name="channel_playback">Воспроизведение</string>

@@ -30,7 +30,7 @@
     <string name="reload">อ่านใหม่</string>
     <string name="autoplay">เล่น CD ทันทีที่ใส่แผ่น</string>
     <string name="retro">เรโทร</string>
-    <string name="up">ขึ้น</string>
+    <string name="up">ย้อนกลับ</string>
     <string name="play_all">เล่นทั้งหมด</string>
     <string name="no_app">ไม่มีแอปที่เปิดไฟล์นี้ได้</string>
     <string name="channel_playback">การเล่น</string>

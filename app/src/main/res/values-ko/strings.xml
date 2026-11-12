@@ -30,7 +30,7 @@
     <string name="reload">다시 읽기</string>
     <string name="autoplay">CD를 넣으면 바로 재생</string>
     <string name="retro">레트로</string>
-    <string name="up">위로</string>
+    <string name="up">뒤로</string>
     <string name="play_all">모두 재생</string>
     <string name="no_app">이 파일을 열 앱이 없습니다</string>
     <string name="channel_playback">재생</string>

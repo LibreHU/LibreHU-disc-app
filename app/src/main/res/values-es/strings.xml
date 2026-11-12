@@ -30,7 +30,7 @@
     <string name="reload">Releer</string>
     <string name="autoplay">Reproducir un CD al insertarlo</string>
     <string name="retro">Retro</string>
-    <string name="up">Subir</string>
+    <string name="up">Atrás</string>
     <string name="play_all">Reproducir todo</string>
     <string name="no_app">Ninguna app puede abrir este archivo</string>
     <string name="channel_playback">Reproducción</string>

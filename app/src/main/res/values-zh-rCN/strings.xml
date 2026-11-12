@@ -30,7 +30,7 @@
     <string name="reload">重新读取</string>
     <string name="autoplay">插入 CD 后立即播放</string>
     <string name="retro">复古</string>
-    <string name="up">上移</string>
+    <string name="up">返回</string>
     <string name="play_all">全部播放</string>
     <string name="no_app">没有可打开此文件的应用</string>
     <string name="channel_playback">播放</string>
