@@ -139,6 +139,13 @@ Fournisseur `<paquet>.bridge` (`bridge/BridgeProvider.kt`), réservé aux applis
 `org.librehu.permission.BRIDGE`, vérifiée dans `call()` lui-même) ; format décrit dans
 [LibreHU-service, docs/bridge.md](https://github.com/LibreHU/LibreHU-service/blob/main/docs/bridge.md).
 
+## Langues
+
+Anglais et français, plus 18 langues traduites par IA (Claude), sans relecture par des natifs pour l'instant :
+espagnol, italien, portugais (Portugal et Brésil), néerlandais, tchèque, roumain, russe, ukrainien, turc, coréen,
+chinois (simplifié et traditionnel), vietnamien, thaï, hindi, indonésien et géorgien. L'appli suit la langue
+d'Android. Corrections bienvenues : fichiers `app/src/main/res/values-<langue>/strings.xml`.
+
 ## Optimisation (R8)
 
 L'APK publié par la CI (`assembleRelease`) est **optimisé par R8** : code et ressources réduits et optimisés, ce qui
