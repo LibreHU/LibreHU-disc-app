@@ -32,8 +32,9 @@ android {
         versionName = (git("describe", "--tags", "--always", "--dirty", "--exclude", "latest-*", "--exclude", "build-*") ?: "dev") + "-" + branchName()
 
         ndk {
-            // The AC8257 is arm64.
-            abiFilters += "arm64-v8a"
+            // The AC8257 is arm64; armeabi-v7a too for head units running a 32-bit Android (librehu_disc builds
+            // cleanly for both).
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
     }
 
